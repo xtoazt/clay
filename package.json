@@ -5,7 +5,7 @@
   "main": "dist/src/main.js",
   "scripts": {
     "build": "tsc && npm run copy-files",
-    "copy-files": "mkdir -p dist/renderer && cp renderer/index.html dist/renderer/ && cp renderer/styles.css dist/renderer/",
+    "copy-files": "node -e \"const fs=require('fs');const path=require('path');fs.mkdirSync('dist/renderer',{recursive:true});fs.copyFileSync('renderer/index.html','dist/renderer/index.html');fs.copyFileSync('renderer/styles.css','dist/renderer/styles.css');\"",
     "start": "npm run build && electron .",
     "dev": "npm run copy-files && tsc && electron .",
     "watch": "tsc --watch"
@@ -18,7 +18,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@types/node-pty": "^0.2.3",
     "electron": "^28.0.0",
     "typescript": "^5.3.3"
   }
