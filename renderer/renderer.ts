@@ -5,13 +5,16 @@ interface ElectronAPI {
     exitCode: number;
   }>;
   executeCommandStream: (command: string, cwd?: string) => Promise<any>;
+  createPtySession?: (cwd?: string, cols?: number, rows?: number) => Promise<any>;
   getCurrentDirectory: () => Promise<string>;
   changeDirectory: (dir: string) => Promise<{ success: boolean; cwd?: string; error?: string }>;
   getHomeDirectory: () => Promise<string>;
   getPlatform: () => Promise<string>;
+  hasPtySupport?: () => Promise<boolean>;
   windowMinimize: () => Promise<void>;
   windowMaximize: () => Promise<void>;
   windowClose: () => Promise<void>;
+  onTerminalResize?: (callback: (size: { cols: number; rows: number }) => void) => void;
 }
 
 // Make this file a module
@@ -35,6 +38,9 @@ class ClayTerminal {
   private isExecuting: boolean = false;
   private lastError: { command: string; error: string; timestamp: number } | null = null;
   private recentOutput: string[] = [];
+  private ptySession: any = null;
+  private hasPty: boolean = false;
+  private useRealTerminal: boolean = false;
 
   constructor() {
     const outputEl = document.getElementById('terminal-output');
@@ -84,10 +90,37 @@ class ClayTerminal {
       this.updateDirectory(),
       this.loadHomeDirectory(),
       this.loadPlatform(),
+      this.checkPtySupport(),
     ]);
     this.setupEventListeners();
     this.setupWindowControls();
+    this.setupTerminalResize();
     this.printWelcomeMessage();
+  }
+
+  private async checkPtySupport(): Promise<void> {
+    try {
+      if (window.electronAPI?.hasPtySupport) {
+        this.hasPty = await window.electronAPI.hasPtySupport();
+        if (this.hasPty) {
+          // Optionally create PTY session for real terminal experience
+          // For now, we'll use it for interactive commands
+        }
+      }
+    } catch (error) {
+      console.warn('PTY check failed:', error);
+      this.hasPty = false;
+    }
+  }
+
+  private setupTerminalResize(): void {
+    if (window.electronAPI?.onTerminalResize) {
+      window.electronAPI.onTerminalResize((size) => {
+        if (this.ptySession && this.ptySession.resize) {
+          this.ptySession.resize(size.cols, size.rows);
+        }
+      });
+    }
   }
 
   private async loadHomeDirectory(): Promise<void> {
@@ -164,8 +197,44 @@ class ClayTerminal {
   }
 
   private async handleKeyDown(e: KeyboardEvent): Promise<void> {
+    // If we have an active PTY session, forward input to it
+    if (this.ptySession && this.isExecuting) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.ptySession.write('\r');
+        return;
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        this.ptySession.write('\b');
+        return;
+      } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this.ptySession.write('\x03'); // Ctrl+C
+        this.addOutputLine('^C', 'info');
+        return;
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        // Forward printable characters
+        this.ptySession.write(e.key);
+        return;
+      }
+      // Forward arrow keys and special keys
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        const arrowMap: { [key: string]: string } = {
+          'ArrowUp': '\x1b[A',
+          'ArrowDown': '\x1b[B',
+          'ArrowRight': '\x1b[C',
+          'ArrowLeft': '\x1b[D',
+        };
+        if (arrowMap[e.key]) {
+          this.ptySession.write(arrowMap[e.key]);
+        }
+        return;
+      }
+    }
+
     if (this.isExecuting && e.key !== 'Enter') {
-      return; // Ignore input while executing
+      return; // Ignore input while executing (unless it's a PTY session)
     }
 
     if (e.key === 'Enter') {
@@ -295,6 +364,13 @@ class ClayTerminal {
       if (!window.electronAPI) {
         throw new Error('electronAPI not available');
       }
+
+      // Use PTY for better terminal emulation if available for interactive programs
+      if (this.hasPty && window.electronAPI.createPtySession && 
+          command.match(/^(vim|nano|htop|top|watch|python -i|node -i|irb|pry|bash -i|zsh -i)/)) {
+        await this.executeWithPty(command);
+        return;
+      }
       
       const stream = await window.electronAPI.executeCommandStream(command, this.currentDirectory);
       
@@ -304,10 +380,17 @@ class ClayTerminal {
       stream.onOutput((data: string) => {
         hasOutput = true;
         outputText += data;
-        const lines = data.split('\n');
+        // Process ANSI escape codes for colored output
+        const processed = this.processAnsiCodes(data);
+        const lines = processed.split('\n');
         lines.forEach((line: string) => {
           if (line.trim() || !hasOutput) {
-            this.addOutputLine(line, 'output');
+            // Preserve original if it had ANSI codes
+            if (data.includes('\x1b[')) {
+              this.addOutputLineWithAnsi(line);
+            } else {
+              this.addOutputLine(line, 'output');
+            }
             this.recentOutput.push(line);
             if (this.recentOutput.length > 50) {
               this.recentOutput.shift();
@@ -334,6 +417,79 @@ class ClayTerminal {
         timestamp: Date.now()
       };
     }
+  }
+
+  private async executeWithPty(command: string): Promise<void> {
+    if (!window.electronAPI?.createPtySession) return;
+
+    try {
+      const cols = Math.max(80, Math.floor(this.outputContainer.clientWidth / 8));
+      const rows = Math.max(24, Math.floor(this.outputContainer.clientHeight / 16));
+      
+      this.ptySession = await window.electronAPI.createPtySession(this.currentDirectory, cols, rows);
+      
+      if (!this.ptySession) {
+        // Fallback to regular execution
+        const stream = await window.electronAPI.executeCommandStream(command, this.currentDirectory);
+        // Handle fallback stream...
+        return;
+      }
+
+      let outputText = '';
+
+      this.ptySession.onData((data: string) => {
+        outputText += data;
+        this.addOutputLineWithAnsi(data);
+        this.recentOutput.push(data);
+        if (this.recentOutput.length > 50) {
+          this.recentOutput.shift();
+        }
+      });
+
+      this.ptySession.onExit((code: number) => {
+        if (code !== 0) {
+          this.lastError = {
+            command,
+            error: outputText || `Process exited with code ${code}`,
+            timestamp: Date.now()
+          };
+        }
+        this.ptySession = null;
+        this.isExecuting = false;
+        this.addPrompt();
+      });
+
+      // Write command to PTY
+      this.ptySession.write(command + '\n');
+    } catch (error: any) {
+      console.error('PTY execution failed:', error);
+      // Fallback to regular execution
+      const stream = await window.electronAPI.executeCommandStream(command, this.currentDirectory);
+      // Handle regular stream...
+    }
+  }
+
+  private processAnsiCodes(text: string): string {
+    // Basic ANSI code processing - strip codes but keep text readable
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+  }
+
+  private addOutputLineWithAnsi(text: string): void {
+    const line = document.createElement('div');
+    line.className = 'terminal-line output';
+    
+    // Create a pre element to preserve formatting and handle ANSI
+    const pre = document.createElement('pre');
+    pre.style.margin = '0';
+    pre.style.fontFamily = 'inherit';
+    pre.style.fontSize = 'inherit';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.wordWrap = 'break-word';
+    pre.textContent = text;
+    
+    line.appendChild(pre);
+    this.outputContainer.appendChild(line);
+    this.scrollToBottom();
   }
 
   private async executeSimpleCommand(command: string): Promise<void> {

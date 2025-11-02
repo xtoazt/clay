@@ -3,8 +3,17 @@ import { spawn, exec, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 
+// Try to import node-pty for real terminal emulation, fallback if not available
+let pty: any = null;
+try {
+  pty = require('node-pty');
+} catch (e) {
+  console.warn('node-pty not available, using fallback');
+}
+
 let mainWindow: BrowserWindow | null = null;
 const activeProcesses = new Map<number, ChildProcess>();
+const activePtySessions = new Map<number, any>();
 
 function createWindow(): void {
   const rendererPath = path.join(__dirname, '../renderer/index.html');
@@ -21,9 +30,23 @@ function createWindow(): void {
       contextIsolation: true,
       sandbox: false,
     },
+    minWidth: 600,
+    minHeight: 400,
   });
 
   mainWindow.loadFile(rendererPath);
+
+  // Handle window resize for terminal dimensions
+  mainWindow.on('resize', () => {
+    if (mainWindow && activePtySessions.size > 0) {
+      const size = mainWindow.getContentSize();
+      // Send resize event to renderer to update terminal
+      mainWindow.webContents.send('terminal-resize', {
+        cols: Math.floor(size[0] / 8), // Approximate character width
+        rows: Math.floor(size[1] / 16), // Approximate character height
+      });
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -36,6 +59,16 @@ function createWindow(): void {
       }
     });
     activeProcesses.clear();
+
+    // Clean up PTY sessions
+    activePtySessions.forEach((ptySession) => {
+      try {
+        ptySession.kill();
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+    activePtySessions.clear();
   });
 }
 
@@ -59,6 +92,15 @@ app.on('window-all-closed', () => {
     }
   });
   activeProcesses.clear();
+
+  activePtySessions.forEach((ptySession) => {
+    try {
+      ptySession.kill();
+    } catch (e) {
+      // Ignore errors
+    }
+  });
+  activePtySessions.clear();
   
   if (process.platform !== 'darwin') {
     app.quit();
@@ -73,6 +115,72 @@ function getShell(): string {
   return process.env.SHELL || '/bin/bash';
 }
 
+// Create a real PTY session for interactive terminal
+ipcMain.handle('create-pty-session', async (event, cwd?: string, cols?: number, rows?: number) => {
+  if (!pty) {
+    // Fallback to regular spawn if node-pty not available
+    return null;
+  }
+
+  try {
+    const shell = getShell();
+    const shellArgs: string[] = process.platform === 'win32' ? [] : ['-l'];
+    
+    const ptyProcess = pty.spawn(shell, shellArgs, {
+      name: 'xterm-256color',
+      cols: cols || 80,
+      rows: rows || 24,
+      cwd: cwd || process.cwd(),
+      env: {
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      },
+    });
+
+    if (ptyProcess.pid) {
+      activePtySessions.set(ptyProcess.pid, ptyProcess);
+    }
+
+    // Setup event handlers
+    const result = {
+      pid: ptyProcess.pid || 0,
+      onData: (callback: (data: string) => void) => {
+        ptyProcess.onData(callback);
+      },
+      onExit: (callback: (exitCode: number, signal?: number) => void) => {
+        ptyProcess.onExit((info: any) => {
+          if (ptyProcess.pid) {
+            activePtySessions.delete(ptyProcess.pid);
+          }
+          callback(info.exitCode || 0, info.signal);
+        });
+      },
+      write: (data: string) => {
+        ptyProcess.write(data);
+      },
+      resize: (cols: number, rows: number) => {
+        try {
+          ptyProcess.resize(cols, rows);
+        } catch (e) {
+          console.error('Failed to resize PTY:', e);
+        }
+      },
+      kill: () => {
+        if (ptyProcess.pid) {
+          activePtySessions.delete(ptyProcess.pid);
+        }
+        ptyProcess.kill();
+      },
+    };
+
+    return result;
+  } catch (error: any) {
+    console.error('Failed to create PTY session:', error);
+    return null;
+  }
+});
+
 // IPC Handlers for simple command execution (non-interactive)
 ipcMain.handle('execute-command', async (event, command: string, cwd?: string) => {
   return new Promise((resolve) => {
@@ -86,7 +194,11 @@ ipcMain.handle('execute-command', async (event, command: string, cwd?: string) =
     
     exec(execCommand, {
       cwd: cwd || process.cwd(),
-      env: { ...process.env },
+      env: { 
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      },
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
     }, (error, stdout, stderr) => {
       if (error) {
@@ -121,7 +233,11 @@ ipcMain.handle('execute-command-stream', async (event, command: string, cwd?: st
     
     const child = spawn(isWindows ? shellCmd : shellCmd, args, {
       cwd: cwd || process.cwd(),
-      env: { ...process.env },
+      env: { 
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      },
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -188,6 +304,10 @@ ipcMain.handle('get-home-directory', () => {
 
 ipcMain.handle('get-platform', () => {
   return process.platform;
+});
+
+ipcMain.handle('has-pty-support', () => {
+  return pty !== null;
 });
 
 // Handle window controls

@@ -4,14 +4,18 @@ A beautiful, modern terminal built with Electron, inspired by [Hyper](https://hy
 
 ## Features
 
-- 🖥️ **Full Terminal Functionality** - Execute any shell command, including ADB, npm, python, and more
-- 🎨 **Hyper-Inspired UI** - Beautiful, clean interface based on Hyper terminal
+- 🖥️ **Real Terminal Functionality** - Full PTY (pseudo-terminal) support via node-pty for true terminal emulation, just like VS Code's integrated terminal
+- ⚡ **AI-Powered Assistant** - Built-in AI assistant with Quick Fix for automatic error diagnosis and resolution
+- 🎨 **Hyper-Inspired UI** - Beautiful, clean interface based on [Hyper terminal](https://hyper.is/)
 - 📜 **Command History** - Navigate through previous commands with arrow keys
 - 📁 **Directory Navigation** - Full `cd` and `pwd` support with `~` expansion
 - 🔄 **Streaming Support** - Real-time output for interactive commands
-- ⌨️ **Keyboard Shortcuts** - Ctrl+C to cancel, arrow keys for history
+- 🎯 **Interactive Programs** - Support for vim, nano, htop, python interactive mode, and more
+- ⌨️ **Keyboard Shortcuts** - Ctrl+C to cancel, Alt+F for Quick Fix, arrow keys for history
 - 🎯 **Platform Agnostic** - Works on Windows, macOS, and Linux (perfect for Chromebooks)
 - 🚀 **Fast & Responsive** - Optimized for smooth performance
+- 🖱️ **Terminal Resizing** - Automatic terminal dimension updates on window resize
+- 🌈 **ANSI Support** - Proper handling of colored terminal output and escape codes
 
 ## Installation
 
@@ -127,6 +131,18 @@ Clay Terminal uses Electron's security best practices:
 Clay Terminal automatically detects and uses the system's default shell:
 - **Windows**: `cmd.exe` or `COMSPEC`
 - **macOS/Linux**: `bash`, `zsh`, or `SHELL` environment variable
+
+## Real Terminal Emulation
+
+Clay uses [node-pty](https://github.com/microsoft/node-pty), the same library that powers VS Code's integrated terminal, for true terminal emulation:
+
+- **PTY Support**: Real pseudo-terminal (PTY) sessions for interactive programs
+- **Interactive Programs**: Run vim, nano, htop, python interactive mode, and more
+- **Real Input Handling**: Proper keyboard input forwarding to interactive programs
+- **Terminal Resizing**: Automatic dimension updates when the window is resized
+- **ANSI Codes**: Full support for colored output and terminal escape sequences
+
+This gives you a **real terminal experience** - not just command execution, but actual terminal emulation like you'd get in a native terminal application.
 
 ## Perfect for Chromebooks
 
