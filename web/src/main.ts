@@ -4,6 +4,7 @@ import { WebLinksAddon } from 'xterm-addon-web-links';
 import { CanvasAddon } from 'xterm-addon-canvas';
 import { BridgeBackend } from './bridge-backend';
 import { WebWorkerBackendWrapper } from './backend-worker-wrapper';
+import { SessionEncoder } from './session-encoder';
 
 // Helper to get hostname (fallback for browser)
 function getHostname(): string {
@@ -24,6 +25,8 @@ class ClayWebTerminal {
   private aiControlEnabled: boolean = false;
   private aiExecuting: boolean = false;
   private useBridge: boolean = false;
+  private sessionCommands: string[] = []; // Track all commands for sharing
+  private isReplayingSession: boolean = false;
 
   constructor() {
     this.terminal = new Terminal({
@@ -73,6 +76,78 @@ class ClayWebTerminal {
     this.initializeTerminal();
     this.setupBackend();
     this.initializeStatusBar();
+    this.checkForShareLink();
+  }
+
+  private checkForShareLink(): void {
+    // Check if URL has a share link
+    const commands = SessionEncoder.parseShareUrl();
+    if (commands.length > 0) {
+      this.terminal.write(`\r\n\x1b[33m[Share Link Detected]\x1b[0m Found ${commands.length} command(s) to replay\r\n`);
+      this.terminal.write(`\x1b[36m[Replaying]\x1b[0m Starting session replay...\r\n\r\n`);
+      
+      // Wait for backend to be ready, then replay
+      setTimeout(async () => {
+        await this.replaySession(commands);
+      }, 1000);
+    }
+  }
+
+  private async replaySession(commands: string[]): Promise<void> {
+    this.isReplayingSession = true;
+    
+    for (let i = 0; i < commands.length; i++) {
+      const command = commands[i];
+      this.terminal.write(`\x1b[33m[${i + 1}/${commands.length}]\x1b[0m ${command}\r\n`);
+      
+      // Execute command
+      if (this.isConnected && this.backend && this.backend.getConnected()) {
+        this.backend.sendInput(command + '\r\n');
+      } else {
+        await this.executeCommand(command);
+      }
+      
+      // Small delay between commands
+      if (i < commands.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+    }
+    
+    this.terminal.write(`\r\n\x1b[32m[Replay Complete]\x1b[0m Session replay finished\r\n`);
+    this.isReplayingSession = false;
+  }
+
+  public generateShareLink(): string {
+    if (this.sessionCommands.length === 0) {
+      return '';
+    }
+    return SessionEncoder.generateShareUrl(this.sessionCommands);
+  }
+
+  public async copyShareLink(): Promise<void> {
+    const shareLink = this.generateShareLink();
+    if (!shareLink) {
+      this.terminal.write(`\r\n\x1b[33m[Share]\x1b[0m No commands to share yet\r\n`);
+      if (!this.useBridge) {
+        this.writePrompt();
+      }
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      this.terminal.write(`\r\n\x1b[32m[Share Link Copied!]\x1b[0m\r\n`);
+      this.terminal.write(`\x1b[36m${shareLink}\x1b[0m\r\n`);
+      this.terminal.write(`\x1b[33m[Share]\x1b[0m Link includes ${this.sessionCommands.length} command(s)\r\n`);
+      if (!this.useBridge) {
+        this.writePrompt();
+      }
+    } catch (error) {
+      this.terminal.write(`\r\n\x1b[31m[Error]\x1b[0m Failed to copy share link: ${error}\r\n`);
+      if (!this.useBridge) {
+        this.writePrompt();
+      }
+    }
   }
 
   private initializeStatusBar(): void {
@@ -417,12 +492,21 @@ class ClayWebTerminal {
       } else if (question === 'status') {
         this.terminal.write(`\x1b[36m[AI Status]\x1b[0m Control: ${this.aiControlEnabled ? 'ENABLED' : 'DISABLED'}\r\n`);
         this.terminal.write(`\x1b[36m[AI Status]\x1b[0m Model: ${this.aiAssistant.getCurrentModel()}\r\n`);
+        this.terminal.write(`\x1b[36m[Session]\x1b[0m Commands: ${this.sessionCommands.length}\r\n`);
         this.writePrompt();
+        return;
+      } else if (question === 'share' || question === 'share link') {
+        await this.copyShareLink();
         return;
       }
       
       await this.handleAICommand(question);
       return;
+    }
+
+    // Track command for session sharing (only if not replaying and not AI command)
+    if (!this.isReplayingSession && !command.startsWith('@ai')) {
+      this.sessionCommands.push(command);
     }
 
     // Execute command
@@ -945,6 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModelSelector = document.getElementById('close-model-selector');
   const modelList = document.getElementById('model-list');
   const quickFixBtn = document.getElementById('quick-fix-btn');
+  const shareBtn = document.getElementById('share-btn');
   
   if (modelBtn && modelSelector && closeModelSelector && modelList) {
     modelBtn.addEventListener('click', () => {
@@ -1018,6 +1103,28 @@ document.addEventListener('DOMContentLoaded', () => {
     quickFixBtn.addEventListener('click', () => {
       (window as any).clayTerminal.manualQuickFix();
     });
+  }
+  
+  // Share button
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      await (window as any).clayTerminal.copyShareLink();
+    });
+    
+    // Show badge with command count if there are commands
+    setInterval(() => {
+      const terminal = (window as any).clayTerminal;
+      if (terminal && terminal.sessionCommands) {
+        const count = terminal.sessionCommands.length;
+        if (count > 0) {
+          shareBtn.setAttribute('data-count', count.toString());
+          shareBtn.classList.add('has-commands');
+        } else {
+          shareBtn.removeAttribute('data-count');
+          shareBtn.classList.remove('has-commands');
+        }
+      }
+    }, 1000);
   }
   
   // PWA install handler
