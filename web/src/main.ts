@@ -403,6 +403,13 @@ class ClayWebTerminal {
 
     // Handle keyboard input - send directly to backend
     this.terminal.onData((data: string) => {
+      // Prevent default form submission behavior
+      if (data === '\r' || data === '\n') {
+        // Prevent any page scrolling or form submission
+        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: false, cancelable: true });
+        event.preventDefault();
+      }
+      
       if (this.isConnected && this.backend && this.backend.getConnected()) {
         // Send directly to backend for real-time terminal
         this.backend.sendInput(data);
@@ -410,6 +417,16 @@ class ClayWebTerminal {
         // Handle locally if not connected
         this.handleLocalCommand(data);
       }
+    });
+    
+    // Prevent Enter key from causing page scroll
+    this.terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        // Prevent default to stop page scrolling
+        event.preventDefault();
+        return false;
+      }
+      return true;
     });
 
     // Handle paste (Ctrl+V)
@@ -576,8 +593,8 @@ class ClayWebTerminal {
 
   private handleLocalCommand(data: string): void {
     // Handle special keys
-    if (data === '\r') {
-      // Enter pressed
+    if (data === '\r' || data === '\n') {
+      // Enter pressed - prevent page scrolling
       this.terminal.write('\r\n');
       const command = this.currentLine.trim();
       
@@ -1196,17 +1213,302 @@ class SimpleAIAssistant {
   }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize Lucide icons
-  if (typeof (window as any).lucide !== 'undefined') {
-    (window as any).lucide.createIcons();
+// UI Builder - Creates all UI elements dynamically
+class UIBuilder {
+  private root: HTMLElement;
+  private terminal: ClayWebTerminal | null = null;
+  
+  constructor() {
+    this.root = document.getElementById('app-root') || document.body;
+    this.buildUI();
+    this.setupEventHandlers();
   }
   
-  const terminal = new ClayWebTerminal();
+  private buildUI(): void {
+    // Clear root
+    this.root.innerHTML = '';
+    
+    // App container
+    const appContainer = document.createElement('div');
+    appContainer.className = 'app-container';
+    
+    // Terminal container
+    const terminalContainer = document.createElement('div');
+    terminalContainer.className = 'terminal-container';
+    
+    // Terminal header
+    const header = this.createHeader();
+    terminalContainer.appendChild(header);
+    
+    // Terminal body
+    const terminalBody = document.createElement('div');
+    terminalBody.className = 'terminal-body';
+    terminalBody.id = 'terminal';
+    terminalContainer.appendChild(terminalBody);
+    
+    // Error banner
+    const errorBanner = this.createErrorBanner();
+    terminalContainer.appendChild(errorBanner);
+    
+    appContainer.appendChild(terminalContainer);
+    
+    // Model selector overlay
+    const modelSelector = this.createModelSelector();
+    appContainer.appendChild(modelSelector);
+    
+    // Loading overlay
+    const loadingOverlay = this.createLoadingOverlay();
+    appContainer.appendChild(loadingOverlay);
+    
+    this.root.appendChild(appContainer);
+  }
   
-  // Model selector UI
-  const modelBtn = document.getElementById('model-btn');
+  private createHeader(): HTMLElement {
+    const header = document.createElement('div');
+    header.className = 'terminal-header';
+    
+    // Controls
+    const controls = document.createElement('div');
+    controls.className = 'terminal-controls';
+    
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'control close';
+    closeBtn.id = 'window-close';
+    
+    const minimizeBtn = document.createElement('span');
+    minimizeBtn.className = 'control minimize';
+    minimizeBtn.id = 'window-minimize';
+    
+    const maximizeBtn = document.createElement('span');
+    maximizeBtn.className = 'control maximize';
+    maximizeBtn.id = 'window-maximize';
+    
+    controls.appendChild(closeBtn);
+    controls.appendChild(minimizeBtn);
+    controls.appendChild(maximizeBtn);
+    
+    // Title
+    const title = document.createElement('div');
+    title.className = 'terminal-title';
+    title.textContent = 'Clay Terminal';
+    
+    // Header actions
+    const actions = this.createHeaderActions();
+    
+    header.appendChild(controls);
+    header.appendChild(title);
+    header.appendChild(actions);
+    
+    return header;
+  }
+  
+  private createHeaderActions(): HTMLElement {
+    const actions = document.createElement('div');
+    actions.className = 'header-actions';
+    
+    // Status indicators
+    const statusIndicators = document.createElement('div');
+    statusIndicators.className = 'status-indicators';
+    statusIndicators.id = 'status-indicators';
+    
+    const webvmStatus = this.createStatusItem('webvm-status', 'webvm-dot', 'webvm-text', 'WebVM');
+    const websocketStatus = this.createStatusItem('websocket-status', 'websocket-dot', 'websocket-text', 'WebSocket');
+    const bridgeStatus = this.createStatusItem('bridge-status', 'bridge-dot', 'bridge-text', 'Bridge');
+    const aiStatus = this.createStatusItem('ai-status', 'ai-dot', 'ai-text', 'AI');
+    
+    websocketStatus.style.display = 'none';
+    bridgeStatus.style.display = 'none';
+    
+    statusIndicators.appendChild(webvmStatus);
+    statusIndicators.appendChild(websocketStatus);
+    statusIndicators.appendChild(bridgeStatus);
+    statusIndicators.appendChild(aiStatus);
+    
+    // Share button
+    const shareBtn = this.createIconButton('share-btn', 'link', 'Share', 'Share Session');
+    
+    // Model button
+    const modelBtn = this.createIconButton('model-btn', 'brain', 'Model', 'Select AI Model');
+    
+    // Install button
+    const installBtn = this.createIconButton('install-btn', 'download', 'Install', 'Install App');
+    installBtn.style.display = 'none';
+    
+    actions.appendChild(statusIndicators);
+    actions.appendChild(shareBtn);
+    actions.appendChild(modelBtn);
+    actions.appendChild(installBtn);
+    
+    return actions;
+  }
+  
+  private createStatusItem(itemId: string, dotId: string, textId: string, text: string): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'status-item';
+    item.id = itemId;
+    
+    const dot = document.createElement('span');
+    dot.className = 'status-dot';
+    dot.id = dotId;
+    
+    const textSpan = document.createElement('span');
+    textSpan.className = 'status-text';
+    textSpan.id = textId;
+    textSpan.textContent = text;
+    
+    item.appendChild(dot);
+    item.appendChild(textSpan);
+    
+    return item;
+  }
+  
+  private createIconButton(id: string, icon: string, text: string, title: string): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.id = id;
+    btn.className = id.replace('-btn', '-btn');
+    btn.title = title;
+    
+    const iconEl = document.createElement('i');
+    iconEl.setAttribute('data-lucide', icon);
+    
+    const textSpan = document.createElement('span');
+    textSpan.textContent = text;
+    
+    btn.appendChild(iconEl);
+    btn.appendChild(textSpan);
+    
+    return btn;
+  }
+  
+  private createErrorBanner(): HTMLElement {
+    const banner = document.createElement('div');
+    banner.className = 'error-banner';
+    banner.id = 'error-banner';
+    banner.style.display = 'none';
+    
+    const content = document.createElement('div');
+    content.className = 'error-content';
+    
+    const icon = document.createElement('i');
+    icon.setAttribute('data-lucide', 'alert-triangle');
+    icon.className = 'error-icon';
+    
+    const text = document.createElement('span');
+    text.className = 'error-text';
+    text.id = 'error-text';
+    
+    const quickFixBtn = document.createElement('button');
+    quickFixBtn.className = 'quick-fix-btn';
+    quickFixBtn.id = 'quick-fix-btn';
+    
+    const fixIcon = document.createElement('i');
+    fixIcon.setAttribute('data-lucide', 'wrench');
+    
+    const fixText = document.createElement('span');
+    fixText.textContent = 'Quick Fix';
+    
+    quickFixBtn.appendChild(fixIcon);
+    quickFixBtn.appendChild(fixText);
+    
+    content.appendChild(icon);
+    content.appendChild(text);
+    content.appendChild(quickFixBtn);
+    
+    banner.appendChild(content);
+    
+    return banner;
+  }
+  
+  private createModelSelector(): HTMLElement {
+    const overlay = document.createElement('div');
+    overlay.className = 'model-selector-overlay';
+    overlay.id = 'model-selector';
+    overlay.style.display = 'none';
+    
+    const content = document.createElement('div');
+    content.className = 'model-selector-content';
+    
+    const header = document.createElement('div');
+    header.className = 'model-selector-header';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Select AI Model';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
+    closeBtn.id = 'close-model-selector';
+    closeBtn.textContent = '×';
+    
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    
+    const modelList = document.createElement('div');
+    modelList.className = 'model-list';
+    modelList.id = 'model-list';
+    
+    content.appendChild(header);
+    content.appendChild(modelList);
+    
+    overlay.appendChild(content);
+    
+    return overlay;
+  }
+  
+  private createLoadingOverlay(): HTMLElement {
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.id = 'loading';
+    
+    const spinner = document.createElement('div');
+    spinner.className = 'loading-spinner';
+    
+    const text = document.createElement('p');
+    text.textContent = 'Initializing Terminal...';
+    
+    overlay.appendChild(spinner);
+    overlay.appendChild(text);
+    
+    return overlay;
+  }
+  
+  private setupEventHandlers(): void {
+    // Prevent form submission and page scrolling
+    document.addEventListener('keydown', (e) => {
+      // Prevent default behavior for Enter key to stop page scrolling
+      if (e.key === 'Enter' && e.target === document.body) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+    
+    // Prevent any form submission
+    document.addEventListener('submit', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }, true);
+  }
+  
+  public initializeTerminal(): void {
+    this.terminal = new ClayWebTerminal();
+  }
+  
+  public getTerminal(): ClayWebTerminal | null {
+    return this.terminal;
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Build UI dynamically
+  const uiBuilder = new UIBuilder();
+  
+  // Initialize terminal after UI is built
+  setTimeout(() => {
+    uiBuilder.initializeTerminal();
+    
+    // Model selector UI
+    const modelBtn = document.getElementById('model-btn');
   const modelSelector = document.getElementById('model-selector');
   const closeModelSelector = document.getElementById('close-model-selector');
   const modelList = document.getElementById('model-list');

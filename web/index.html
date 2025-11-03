@@ -11,82 +11,8 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
-  <div class="app-container">
-    <div class="terminal-container">
-      <div class="terminal-header">
-        <div class="terminal-controls">
-          <span class="control close" id="window-close"></span>
-          <span class="control minimize" id="window-minimize"></span>
-          <span class="control maximize" id="window-maximize"></span>
-        </div>
-        <div class="terminal-title">Clay Terminal</div>
-        <div class="header-actions">
-          <div class="status-indicators" id="status-indicators">
-            <div class="status-item" id="webvm-status">
-              <span class="status-dot" id="webvm-dot"></span>
-              <span class="status-text" id="webvm-text">WebVM</span>
-            </div>
-            <div class="status-item" id="websocket-status" style="display: none;">
-              <span class="status-dot" id="websocket-dot"></span>
-              <span class="status-text" id="websocket-text">WebSocket</span>
-            </div>
-            <div class="status-item" id="bridge-status" style="display: none;">
-              <span class="status-dot" id="bridge-dot"></span>
-              <span class="status-text" id="bridge-text">Bridge</span>
-            </div>
-            <div class="status-item" id="ai-status">
-              <span class="status-dot" id="ai-dot"></span>
-              <span class="status-text" id="ai-text">AI</span>
-            </div>
-          </div>
-          <button class="share-btn" id="share-btn" title="Share Session">
-            <i data-lucide="link"></i>
-            <span>Share</span>
-          </button>
-          <button class="model-btn" id="model-btn" title="Select AI Model">
-            <i data-lucide="brain"></i>
-            <span>Model</span>
-          </button>
-          <button class="install-btn" id="install-btn" style="display: none;">
-            <i data-lucide="download"></i>
-            <span>Install</span>
-          </button>
-        </div>
-      </div>
-      <div class="terminal-body" id="terminal"></div>
-      <div class="error-banner" id="error-banner" style="display: none;">
-        <div class="error-content">
-          <i data-lucide="alert-triangle" class="error-icon"></i>
-          <span class="error-text" id="error-text"></span>
-          <button class="quick-fix-btn" id="quick-fix-btn">
-            <i data-lucide="wrench"></i>
-            <span>Quick Fix</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <div class="model-selector-overlay" id="model-selector" style="display: none;">
-      <div class="model-selector-content">
-        <div class="model-selector-header">
-          <h3>Select AI Model</h3>
-          <button class="close-btn" id="close-model-selector">×</button>
-        </div>
-        <div class="model-list" id="model-list"></div>
-      </div>
-    </div>
-    <div class="loading-overlay" id="loading">
-      <div class="loading-spinner"></div>
-      <p>Initializing Terminal...</p>
-    </div>
-  </div>
-  <script type="module" src="/src/main.ts"></script>
+  <div id="app-root"></div>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    // Initialize Lucide icons after DOM is ready
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-  </script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
-
