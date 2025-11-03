@@ -146,39 +146,51 @@ body {
   letter-spacing: 1px;
   text-transform: uppercase;
   opacity: 0.8;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  justify-content: flex-end;
   padding-right: 14px;
   -webkit-app-region: no-drag;
+  height: 100%;
 }
 
 /* Status Indicators - Uiverse.io card style */
 .status-indicators {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 12px;
-  padding-right: 16px;
+  justify-content: center;
+  gap: 10px;
+  padding: 4px 10px;
+  padding-right: 14px;
   border-right: 1px solid var(--ctp-surface0);
   margin-right: 4px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
   backdrop-filter: blur(10px);
+  height: 26px;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  gap: 6px;
   cursor: default;
   position: relative;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 6px;
   transition: background-color 0.2s ease;
+  line-height: 1;
+  height: 20px;
 }
 
 .status-item:hover {
@@ -186,14 +198,15 @@ body {
 }
 
 .status-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ctp-surface2);
   display: inline-block;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   box-shadow: 0 0 0 2px transparent;
+  flex-shrink: 0;
 }
 
 .status-dot::before {
@@ -281,6 +294,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.8px;
   white-space: nowrap;
+  line-height: 1;
+  display: flex;
+  align-items: center;
 }
 
 /* Buttons - Uiverse.io inspired mixed styles */
@@ -290,7 +306,7 @@ body {
   background: rgba(203, 166, 247, 0.12);
   border: 1px solid rgba(203, 166, 247, 0.25);
   color: var(--ctp-mauve);
-  padding: 6px 16px;
+  padding: 6px 14px;
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
@@ -301,9 +317,13 @@ body {
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  line-height: 1;
+  white-space: nowrap;
+  height: 26px;
 }
 
 .model-btn i[data-lucide],
@@ -312,12 +332,16 @@ body {
   width: 14px;
   height: 14px;
   stroke-width: 2;
+  flex-shrink: 0;
+  display: block;
 }
 
 .model-btn span,
 .install-btn span,
 .share-btn span {
   display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .share-btn {
@@ -578,10 +602,12 @@ body {
 .error-content {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 12px;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+  flex-wrap: nowrap;
 }
 
 .error-icon {
@@ -605,14 +631,19 @@ body {
   color: var(--ctp-red);
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quick-fix-btn {
   background: linear-gradient(135deg, rgba(249, 226, 175, 0.2) 0%, rgba(249, 226, 175, 0.15) 100%);
   border: 1.5px solid var(--ctp-yellow);
   color: var(--ctp-yellow);
-  padding: 8px 18px;
+  padding: 8px 16px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -623,15 +654,27 @@ body {
   letter-spacing: 0.8px;
   position: relative;
   overflow: hidden;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .quick-fix-btn i[data-lucide] {
   width: 14px;
   height: 14px;
   stroke-width: 2;
+  flex-shrink: 0;
+  display: block;
+}
+
+.quick-fix-btn span {
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .quick-fix-btn::before {
@@ -828,12 +871,15 @@ body {
   font-weight: 600;
   margin-bottom: 4px;
   letter-spacing: 0.3px;
+  line-height: 1.3;
+  display: block;
 }
 
 .model-desc {
   color: var(--ctp-subtext0);
   font-size: 12px;
   line-height: 1.4;
+  display: block;
 }
 
 .checkmark {
@@ -841,6 +887,11 @@ body {
   font-size: 20px;
   font-weight: bold;
   animation: check-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 @keyframes check-in {
