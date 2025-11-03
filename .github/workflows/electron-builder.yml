@@ -41,17 +41,17 @@ jobs:
       run: npm run build
 
     # Note: To create distributable Electron apps, install electron-builder:
-    # npm install --save-dev electron-builder
+     npm install --save-dev electron-builder
     # Then uncomment the following steps:
     
-    # - name: Build Electron app
-    #   run: npm run electron:build
-    #   env:
-    #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+     - name: Build Electron app
+       run: npm run electron:build
+       env:
+         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
-    # - name: Upload artifact
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: ${{ matrix.os-name }}-dist
-    #     path: dist/**/*
+     - name: Upload artifact
+       uses: actions/upload-artifact@v4
+       with:
+         name: ${{ matrix.os-name }}-dist
+         path: dist/**/*
 
