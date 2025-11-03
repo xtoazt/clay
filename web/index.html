@@ -21,10 +21,18 @@
         </div>
         <div class="terminal-title">Clay Terminal</div>
         <div class="header-actions">
-          <div class="status-indicators">
-            <div class="status-item" id="backend-status">
-              <span class="status-dot" id="backend-dot"></span>
-              <span class="status-text" id="backend-text">Backend</span>
+          <div class="status-indicators" id="status-indicators">
+            <div class="status-item" id="webvm-status">
+              <span class="status-dot" id="webvm-dot"></span>
+              <span class="status-text" id="webvm-text">WebVM</span>
+            </div>
+            <div class="status-item" id="websocket-status" style="display: none;">
+              <span class="status-dot" id="websocket-dot"></span>
+              <span class="status-text" id="websocket-text">WebSocket</span>
+            </div>
+            <div class="status-item" id="bridge-status" style="display: none;">
+              <span class="status-dot" id="bridge-dot"></span>
+              <span class="status-text" id="bridge-text">Bridge</span>
             </div>
             <div class="status-item" id="ai-status">
               <span class="status-dot" id="ai-dot"></span>
@@ -32,22 +40,28 @@
             </div>
           </div>
           <button class="share-btn" id="share-btn" title="Share Session">
-            🔗 Share
+            <i data-lucide="link"></i>
+            <span>Share</span>
           </button>
           <button class="model-btn" id="model-btn" title="Select AI Model">
-            🤖 Model
+            <i data-lucide="brain"></i>
+            <span>Model</span>
           </button>
           <button class="install-btn" id="install-btn" style="display: none;">
-            📥 Install
+            <i data-lucide="download"></i>
+            <span>Install</span>
           </button>
         </div>
       </div>
       <div class="terminal-body" id="terminal"></div>
       <div class="error-banner" id="error-banner" style="display: none;">
         <div class="error-content">
-          <span class="error-icon">⚠️</span>
+          <i data-lucide="alert-triangle" class="error-icon"></i>
           <span class="error-text" id="error-text"></span>
-          <button class="quick-fix-btn" id="quick-fix-btn">🔧 Quick Fix</button>
+          <button class="quick-fix-btn" id="quick-fix-btn">
+            <i data-lucide="wrench"></i>
+            <span>Quick Fix</span>
+          </button>
         </div>
       </div>
     </div>
@@ -66,6 +80,13 @@
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    // Initialize Lucide icons after DOM is ready
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  </script>
 </body>
 </html>
 

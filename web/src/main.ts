@@ -11,6 +11,33 @@ function getHostname(): string {
   return typeof window !== 'undefined' ? window.location.hostname : 'localhost';
 }
 
+// Detect ChromeOS
+function isChromeOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  
+  // Check user agent
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes('cros') || ua.includes('chromeos')) {
+    return true;
+  }
+  
+  // Check for ChromeOS-specific properties
+  if ((navigator as any).userAgentData?.platform === 'Chrome OS') {
+    return true;
+  }
+  
+  // Check for ChromeOS-specific APIs
+  if (typeof (window as any).chrome !== 'undefined' && 
+      (window as any).chrome.runtime && 
+      (window as any).chrome.runtime.id) {
+    // Additional check: ChromeOS typically has specific capabilities
+    const platform = navigator.platform.toLowerCase();
+    return platform.includes('linux') && ua.includes('chrome') && !ua.includes('android');
+  }
+  
+  return false;
+}
+
 class ClayWebTerminal {
   private terminal: Terminal;
   private fitAddon: FitAddon;
@@ -27,6 +54,10 @@ class ClayWebTerminal {
   private useBridge: boolean = false;
   private sessionCommands: string[] = []; // Track all commands for sharing
   private isReplayingSession: boolean = false;
+  private isChromeOS: boolean = false;
+  private webvmStatus: 'connected' | 'disconnected' | 'connecting' | 'error' = 'disconnected';
+  private websocketStatus: 'connected' | 'disconnected' | 'connecting' | 'error' = 'disconnected';
+  private bridgeStatus: 'connected' | 'disconnected' | 'connecting' | 'error' = 'disconnected';
 
   constructor() {
     this.terminal = new Terminal({
@@ -66,6 +97,7 @@ class ClayWebTerminal {
     this.terminal.loadAddon(new CanvasAddon());
 
     this.aiAssistant = new SimpleAIAssistant();
+    this.isChromeOS = isChromeOS();
     
     // Try to connect to bridge first (real system access), fallback to Web Worker
     this.initializeBackend();
@@ -77,6 +109,11 @@ class ClayWebTerminal {
     this.setupBackend();
     this.initializeStatusBar();
     this.checkForShareLink();
+    
+    // Initialize Lucide icons
+    if (typeof (window as any).lucide !== 'undefined') {
+      (window as any).lucide.createIcons();
+    }
   }
 
   private checkForShareLink(): void {
@@ -151,48 +188,147 @@ class ClayWebTerminal {
   }
 
   private initializeStatusBar(): void {
+    // Show/hide bridge status based on ChromeOS
+    const bridgeStatusEl = document.getElementById('bridge-status');
+    const websocketStatusEl = document.getElementById('websocket-status');
+    
+    if (this.isChromeOS) {
+      if (bridgeStatusEl) bridgeStatusEl.style.display = 'flex';
+      if (websocketStatusEl) websocketStatusEl.style.display = 'flex';
+    } else {
+      if (bridgeStatusEl) bridgeStatusEl.style.display = 'none';
+      if (websocketStatusEl) websocketStatusEl.style.display = 'none';
+    }
+    
     // Update status indicators
-    this.updateBackendStatus('connecting');
+    this.updateWebVMStatus('connecting');
+    this.updateWebSocketStatus('disconnected');
+    this.updateBridgeStatus('disconnected');
     this.updateAIStatus('idle');
     
     // Periodically check backend status
     setInterval(() => {
-      if (this.backend) {
-        if (this.backend.getConnected()) {
-          this.updateBackendStatus('connected');
-        } else if (this.isConnected) {
-          this.updateBackendStatus('connecting');
-        } else {
-          this.updateBackendStatus('disconnected');
-        }
-      } else {
-        this.updateBackendStatus('disconnected');
-      }
+      this.checkBackendComponents();
     }, 2000);
   }
+  
+  private checkBackendComponents(): void {
+    if (this.backend) {
+      if (this.backend instanceof BridgeBackend) {
+        // Bridge backend
+        const ws = (this.backend as any).ws;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          this.updateWebSocketStatus('connected');
+          this.updateBridgeStatus('connected');
+          this.updateWebVMStatus('disconnected'); // Not using WebVM when bridge is active
+        } else if (ws && ws.readyState === WebSocket.CONNECTING) {
+          this.updateWebSocketStatus('connecting');
+          this.updateBridgeStatus('connecting');
+        } else {
+          this.updateWebSocketStatus('disconnected');
+          this.updateBridgeStatus('disconnected');
+        }
+      } else if (this.backend instanceof WebWorkerBackendWrapper) {
+        // Web Worker backend (WebVM)
+        if (this.backend.getConnected()) {
+          this.updateWebVMStatus('connected');
+          this.updateWebSocketStatus('disconnected');
+          this.updateBridgeStatus('disconnected');
+        } else {
+          this.updateWebVMStatus('disconnected');
+        }
+      }
+    } else {
+      this.updateWebVMStatus('disconnected');
+      this.updateWebSocketStatus('disconnected');
+      this.updateBridgeStatus('disconnected');
+    }
+    
+    // Refresh Lucide icons
+    if (typeof (window as any).lucide !== 'undefined') {
+      (window as any).lucide.createIcons();
+    }
+  }
 
-  private updateBackendStatus(status: 'connected' | 'disconnected' | 'connecting' | 'error'): void {
-    const dot = document.getElementById('backend-dot');
-    const text = document.getElementById('backend-text');
+  private updateWebVMStatus(status: 'connected' | 'disconnected' | 'connecting' | 'error'): void {
+    this.webvmStatus = status;
+    const dot = document.getElementById('webvm-dot');
+    const text = document.getElementById('webvm-text');
     
     if (dot && text) {
       dot.className = 'status-dot';
       switch (status) {
         case 'connected':
           dot.classList.add('connected');
-          text.textContent = 'Backend';
+          text.textContent = 'WebVM';
           break;
         case 'disconnected':
           dot.classList.add('disconnected');
-          text.textContent = 'No Backend';
+          text.textContent = 'WebVM';
           break;
         case 'connecting':
           dot.classList.add('connecting');
-          text.textContent = 'Connecting...';
+          text.textContent = 'WebVM...';
           break;
         case 'error':
           dot.classList.add('error');
-          text.textContent = 'Error';
+          text.textContent = 'WebVM';
+          break;
+      }
+    }
+  }
+  
+  private updateWebSocketStatus(status: 'connected' | 'disconnected' | 'connecting' | 'error'): void {
+    this.websocketStatus = status;
+    const dot = document.getElementById('websocket-dot');
+    const text = document.getElementById('websocket-text');
+    
+    if (dot && text) {
+      dot.className = 'status-dot';
+      switch (status) {
+        case 'connected':
+          dot.classList.add('connected');
+          text.textContent = 'WS';
+          break;
+        case 'disconnected':
+          dot.classList.add('disconnected');
+          text.textContent = 'WS';
+          break;
+        case 'connecting':
+          dot.classList.add('connecting');
+          text.textContent = 'WS...';
+          break;
+        case 'error':
+          dot.classList.add('error');
+          text.textContent = 'WS';
+          break;
+      }
+    }
+  }
+  
+  private updateBridgeStatus(status: 'connected' | 'disconnected' | 'connecting' | 'error'): void {
+    this.bridgeStatus = status;
+    const dot = document.getElementById('bridge-dot');
+    const text = document.getElementById('bridge-text');
+    
+    if (dot && text) {
+      dot.className = 'status-dot';
+      switch (status) {
+        case 'connected':
+          dot.classList.add('connected');
+          text.textContent = 'Bridge';
+          break;
+        case 'disconnected':
+          dot.classList.add('disconnected');
+          text.textContent = 'Bridge';
+          break;
+        case 'connecting':
+          dot.classList.add('connecting');
+          text.textContent = 'Bridge...';
+          break;
+        case 'error':
+          dot.classList.add('error');
+          text.textContent = 'Bridge';
           break;
       }
     }
@@ -292,28 +428,55 @@ class ClayWebTerminal {
   }
 
   private async initializeBackend(): Promise<void> {
-    // Try to connect to bridge server first (for real system access)
-    const bridge = new BridgeBackend();
-    
-    try {
-      const isHealthy = await bridge.healthCheck();
-      if (isHealthy) {
-        console.log('✅ Bridge server found, using real system access');
-        this.backend = bridge;
-        this.useBridge = true;
-        return;
+    // On ChromeOS, try to auto-connect to bridge
+    if (this.isChromeOS) {
+      const bridge = new BridgeBackend();
+      
+      try {
+        const isHealthy = await bridge.healthCheck();
+        if (isHealthy) {
+          console.log('[INFO] Bridge server found, using real system access');
+          this.backend = bridge;
+          this.useBridge = true;
+          this.updateBridgeStatus('connecting');
+          this.updateWebSocketStatus('connecting');
+          return;
+        }
+      } catch (error) {
+        console.log('[INFO] Bridge server not available');
       }
-    } catch (error) {
-      console.log('⚠️  Bridge server not available');
+      
+      // On ChromeOS, keep trying to connect in background
+      this.updateBridgeStatus('disconnected');
+      
+      // Try connecting every 5 seconds on ChromeOS
+      const bridgeRetryInterval = setInterval(async () => {
+        if (!this.useBridge) {
+          try {
+            const bridge = new BridgeBackend();
+            const isHealthy = await bridge.healthCheck();
+            if (isHealthy) {
+              console.log('[INFO] Bridge server found, switching to real system access');
+              this.backend = bridge;
+              this.useBridge = true;
+              this.updateBridgeStatus('connecting');
+              this.updateWebSocketStatus('connecting');
+              await this.setupBackend();
+              clearInterval(bridgeRetryInterval);
+            }
+          } catch (error) {
+            // Continue trying
+          }
+        } else {
+          clearInterval(bridgeRetryInterval);
+        }
+      }, 5000);
     }
-    
-    // Try to start bridge automatically (if possible)
-    // Note: This won't work from browser due to security restrictions
-    // User needs to start bridge manually or install as service
     
     // Fallback to Web Worker (browser-only)
     this.backend = new WebWorkerBackendWrapper();
     this.useBridge = false;
+    this.updateWebVMStatus('connecting');
   }
 
   private async setupBackend(): Promise<void> {
@@ -349,7 +512,16 @@ class ClayWebTerminal {
       // Connect to backend
       await this.backend!.connect();
       this.isConnected = true;
-      this.updateBackendStatus('connected');
+      
+      if (this.useBridge) {
+        this.updateBridgeStatus('connected');
+        this.updateWebSocketStatus('connected');
+        this.updateWebVMStatus('disconnected');
+      } else {
+        this.updateWebVMStatus('connected');
+        this.updateWebSocketStatus('disconnected');
+        this.updateBridgeStatus('disconnected');
+      }
       
       // Get system info
       const info = await this.backend!.getSystemInfo();
@@ -358,8 +530,8 @@ class ClayWebTerminal {
         this.terminal.write(`\x1b[32m[Connected]\x1b[0m Platform: ${info.platform}\r\n`);
         this.terminal.write(`\x1b[32m[Connected]\x1b[0m Shell: ${info.shell}\r\n`);
         if (this.useBridge) {
-          this.terminal.write(`\x1b[32m[Connected]\x1b[0m Real system access: ✅\r\n`);
-          this.terminal.write(`\x1b[32m[Connected]\x1b[0m Full bash support: ✅\r\n`);
+          this.terminal.write(`\x1b[32m[Connected]\x1b[0m Real system access: OK\r\n`);
+          this.terminal.write(`\x1b[32m[Connected]\x1b[0m Full bash support: OK\r\n`);
         } else {
           this.terminal.write(`\x1b[32m[Connected]\x1b[0m Running in WebVM (browser)\r\n`);
         }
@@ -382,7 +554,12 @@ class ClayWebTerminal {
         this.writePrompt();
       }
     } catch (error: any) {
-      this.updateBackendStatus('error');
+      if (this.useBridge) {
+        this.updateBridgeStatus('error');
+        this.updateWebSocketStatus('error');
+      } else {
+        this.updateWebVMStatus('error');
+      }
       this.terminal.write(`\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
       if (this.useBridge) {
         this.terminal.write(`\x1b[33m[INFO]\x1b[0m Bridge connection failed\r\n`);
@@ -1021,6 +1198,11 @@ class SimpleAIAssistant {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize Lucide icons
+  if (typeof (window as any).lucide !== 'undefined') {
+    (window as any).lucide.createIcons();
+  }
+  
   const terminal = new ClayWebTerminal();
   
   // Model selector UI
@@ -1063,7 +1245,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modelBtn) {
       const currentModelData = models.find((m: any) => m.id === currentModel);
       if (currentModelData) {
-        modelBtn.textContent = `🤖 ${currentModelData.name}`;
+        const modelBtnIcon = modelBtn.querySelector('[data-lucide]');
+        const modelBtnText = modelBtn.querySelector('span');
+        if (modelBtnText) {
+          modelBtnText.textContent = currentModelData.name;
+        }
+        if (typeof (window as any).lucide !== 'undefined') {
+          (window as any).lucide.createIcons();
+        }
         modelBtn.classList.add('active');
       }
     }
@@ -1085,7 +1274,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modelBtn) {
           const updatedModel = models.find((m: any) => m.id === model.id);
           if (updatedModel) {
-            modelBtn.textContent = `🤖 ${updatedModel.name}`;
+            const modelBtnText = modelBtn.querySelector('span');
+            if (modelBtnText) {
+              modelBtnText.textContent = updatedModel.name;
+            }
+            if (typeof (window as any).lucide !== 'undefined') {
+              (window as any).lucide.createIcons();
+            }
           }
         }
         // Show confirmation in terminal

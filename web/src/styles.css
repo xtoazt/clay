@@ -58,19 +58,20 @@ body {
   background: var(--ctp-base);
 }
 
-/* Terminal Header */
+/* Terminal Header - Uiverse.io glassmorphism style */
 .terminal-header {
-  background: linear-gradient(180deg, var(--ctp-crust) 0%, var(--ctp-mantle) 100%);
+  background: linear-gradient(180deg, rgba(30, 30, 46, 0.95) 0%, rgba(24, 24, 37, 0.95) 100%);
   padding: 0;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--ctp-surface0);
-  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid rgba(49, 50, 68, 0.5);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   user-select: none;
   height: 38px;
   -webkit-app-region: drag;
   position: relative;
   z-index: 100;
+  backdrop-filter: blur(20px);
 }
 
 .terminal-controls {
@@ -155,14 +156,18 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Status Indicators */
+/* Status Indicators - Uiverse.io card style */
 .status-indicators {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding-right: 12px;
+  gap: 12px;
+  padding: 4px 12px;
+  padding-right: 16px;
   border-right: 1px solid var(--ctp-surface0);
   margin-right: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
 }
 
 .status-item {
@@ -278,24 +283,41 @@ body {
   white-space: nowrap;
 }
 
-/* Buttons */
+/* Buttons - Uiverse.io inspired mixed styles */
 .model-btn,
 .install-btn,
 .share-btn {
   background: rgba(203, 166, 247, 0.12);
   border: 1px solid rgba(203, 166, 247, 0.25);
   color: var(--ctp-mauve);
-  padding: 5px 14px;
+  padding: 6px 16px;
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 7px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-btn i[data-lucide],
+.install-btn i[data-lucide],
+.share-btn i[data-lucide] {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+.model-btn span,
+.install-btn span,
+.share-btn span {
+  display: inline-block;
 }
 
 .share-btn {
@@ -390,13 +412,26 @@ body {
   }
 }
 
-/* Terminal Body */
+/* Terminal Body - Uiverse.io inspired subtle gradient */
 .terminal-body {
   flex: 1;
   padding: 16px 18px;
   overflow: hidden;
-  background: var(--ctp-base);
+  background: linear-gradient(135deg, var(--ctp-base) 0%, var(--ctp-mantle) 100%);
   position: relative;
+}
+
+.terminal-body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(137, 180, 250, 0.03) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(203, 166, 247, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* xterm.js styling */
@@ -407,6 +442,7 @@ body {
   -ms-user-select: text;
   -webkit-user-select: text;
   height: 100%;
+  z-index: 1;
 }
 
 .xterm-viewport {
@@ -452,6 +488,13 @@ body {
   left: 0;
   z-index: 10;
   pointer-events: none;
+}
+
+/* Fix cursor position - ensure it's properly aligned */
+.xterm-cursor-layer .xterm-cursor {
+  display: inline-block;
+  vertical-align: baseline;
+  line-height: inherit;
 }
 
 /* Loading Overlay */
@@ -542,8 +585,19 @@ body {
 }
 
 .error-icon {
-  font-size: 22px;
-  filter: drop-shadow(0 2px 4px rgba(243, 139, 168, 0.3));
+  width: 20px;
+  height: 20px;
+  color: var(--ctp-red);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-icon i[data-lucide] {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
 }
 
 .error-text {
@@ -562,13 +616,22 @@ body {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 7px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-fix-btn i[data-lucide] {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
 }
 
 .quick-fix-btn::before {
