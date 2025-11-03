@@ -1,0 +1,42 @@
+{
+  "name": "clay-util",
+  "version": "1.0.0",
+  "description": "A beautiful, modern terminal for the web - Perfect for ChromeOS users without terminal access",
+  "main": "../dist/clay-util.js",
+  "module": "../dist/clay-util.esm.js",
+  "types": "../dist/clay-util.d.ts",
+  "files": [
+    "../dist",
+    "../README-PACKAGE.md",
+    "../LICENSE"
+  ],
+  "keywords": [
+    "terminal",
+    "web-terminal",
+    "xterm",
+    "chromeos",
+    "browser-terminal",
+    "pty",
+    "shell",
+    "command-line",
+    "cli",
+    "terminal-emulator"
+  ],
+  "author": "xtoazt <ur.toazt@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xtoazt/clay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xtoazt/clay/issues"
+  },
+  "homepage": "https://github.com/xtoazt/clay#readme",
+  "peerDependencies": {
+    "xterm": "^5.0.0",
+    "xterm-addon-fit": "^3.0.0",
+    "xterm-addon-web-links": "^0.9.0",
+    "xterm-addon-canvas": "^0.5.0"
+  }
+}
+

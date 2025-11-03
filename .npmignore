@@ -1,0 +1,16 @@
+web/
+node_modules/
+.git/
+*.log
+.DS_Store
+dist/
+!.dist/
+*.tsbuildinfo
+.vscode/
+.idea/
+coverage/
+*.md
+!README.md
+!README-PACKAGE.md
+LICENSE
+

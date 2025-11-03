@@ -2,6 +2,18 @@
 
 A beautiful, modern terminal built with Electron and Web technologies, inspired by [Hyper](https://hyper.is/). Clay provides a full-featured terminal experience that runs on Chromebooks (as a PWA) and desktop (Electron), allowing you to execute shell scripts, ADB commands, and any other terminal commands you need.
 
+## 📦 NPM Package
+
+Clay Terminal is also available as an **NPM package** for easy integration into existing projects:
+
+```bash
+npm install clay-util
+```
+
+**Perfect for ChromeOS users** - Access terminal functionality directly from the web, even without terminal app access!
+
+See [Integration Guide](./INTEGRATION.md) for detailed integration examples, or [Package Documentation](./README-PACKAGE.md) for full API reference.
+
 **Now with Real System Access!** - The web version can connect to a local bridge server for **real system command execution** and **real filesystem access**. Or run in browser-only mode with Web Workers as a fallback.
 
 ## 🚀 Quick Start

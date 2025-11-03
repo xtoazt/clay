@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clay Terminal - Basic Example</title>
+  <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #terminal {
+      width: 100%;
+      height: 100vh;
+      padding: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  
+  <script type="module">
+    // Import Clay Terminal
+    // In a real project, you would use: import { createClayTerminal } from 'clay-terminal';
+    // For this example, adjust the import path based on your setup
+    import { createClayTerminal } from '../index.js';
+    
+    // Create terminal instance
+    const terminal = await createClayTerminal({
+      container: document.getElementById('terminal'),
+      onOutput: (data) => {
+        console.log('Terminal output:', data);
+      },
+      onError: (error) => {
+        console.error('Terminal error:', error);
+      },
+      onStatusChange: (status) => {
+        console.log('Status changed:', status);
+      }
+    });
+    
+    // Example: Execute a command after a delay
+    setTimeout(() => {
+      terminal.executeCommand('echo "Hello from Clay Terminal!"');
+    }, 2000);
+  </script>
+</body>
+</html>
+

@@ -1,34 +1,83 @@
 {
-  "name": "clay-terminal",
+  "name": "clay-util",
   "version": "1.0.0",
-  "description": "Clay - A beautiful terminal built with Electron",
-  "main": "dist/src/main.js",
+  "description": "A beautiful, modern terminal for the web - Perfect for ChromeOS users without terminal access",
+  "main": "dist/clay-util.js",
+  "module": "dist/clay-util.esm.js",
+  "types": "dist/clay-util.d.ts",
+  "files": [
+    "dist",
+    "package",
+    "README.md",
+    "README-PACKAGE.md",
+    "INTEGRATION.md",
+    "PACKAGE-SETUP.md",
+    "DOCUMENTATION.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "npm run build:electron",
-    "build:electron": "tsc && npm run copy-files",
+    "build": "npm run build:web && npm run build:package",
     "build:web": "cd web && npm install && npm run build",
+    "build:package": "tsc -p tsconfig.package.json && vite build --config vite.package.config.ts",
+    "build:electron": "tsc && npm run copy-files",
     "build:backend": "cd backend && npm install",
     "build:all": "npm run build:backend && npm run build:web",
     "copy-files": "node -e \"const fs=require('fs');const path=require('path');fs.mkdirSync('dist/renderer',{recursive:true});fs.copyFileSync('renderer/index.html','dist/renderer/index.html');fs.copyFileSync('renderer/styles.css','dist/renderer/styles.css');\"",
+    "prepublishOnly": "npm run build:package",
+    "dev": "cd web && npm run dev",
     "start": "npm run build && electron .",
-    "dev": "npm run copy-files && tsc && electron .",
-    "watch": "tsc --watch",
     "web:dev": "cd web && npm run dev",
     "web:build": "npm run build:web",
     "web:install": "cd web && npm install",
     "backend:start": "cd backend && npm start",
     "backend:dev": "cd backend && npm run dev",
-    "start:all": "npm run build:all && npm run backend:start"
+    "start:all": "npm run build:all && npm run backend:start",
+    "watch": "tsc --watch"
   },
-  "keywords": ["electron", "terminal", "shell"],
-  "author": "",
+  "keywords": [
+    "terminal",
+    "web-terminal",
+    "xterm",
+    "chromeos",
+    "browser-terminal",
+    "pty",
+    "shell",
+    "command-line",
+    "cli",
+    "terminal-emulator"
+  ],
+  "author": "xtoazt <ur.toazt@gmail.com>",
   "license": "MIT",
-  "dependencies": {
-    "node-pty": "^1.0.0"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xtoazt/clay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xtoazt/clay/issues"
+  },
+  "homepage": "https://github.com/xtoazt/clay#readme",
+  "peerDependencies": {
+    "xterm": "^5.0.0",
+    "xterm-addon-fit": "^3.0.0",
+    "xterm-addon-web-links": "^0.9.0",
+    "xterm-addon-canvas": "^0.5.0"
+  },
+  "peerDependenciesMeta": {
+    "xterm": {
+      "optional": false
+    },
+    "xterm-addon-fit": {
+      "optional": false
+    },
+    "xterm-addon-web-links": {
+      "optional": false
+    },
+    "xterm-addon-canvas": {
+      "optional": false
+    }
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "electron": "^28.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
   }
 }
