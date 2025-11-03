@@ -1,6 +1,23 @@
 # Clay Terminal
 
-A beautiful, modern terminal built with Electron, inspired by [Hyper](https://hyper.is/). Clay provides a full-featured terminal experience that runs on Chromebooks and other platforms, allowing you to execute shell scripts, ADB commands, and any other terminal commands you need.
+A beautiful, modern terminal built with Electron and Web technologies, inspired by [Hyper](https://hyper.is/). Clay provides a full-featured terminal experience that runs on Chromebooks (as a PWA) and desktop (Electron), allowing you to execute shell scripts, ADB commands, and any other terminal commands you need.
+
+## 🚀 Quick Deploy
+
+### Web Version (PWA for Chromebooks) - **60 Seconds!**
+1. **Enable GitHub Pages:** Repository → Settings → Pages → Source: "GitHub Actions"
+2. **Push to main:** `git push origin main`
+3. **Done!** Visit: `https://yourusername.github.io/clay/`
+4. **Install on Chromebook:** Click "Install" button!
+
+👉 **See [QUICK_START.md](.github/QUICK_START.md) for step-by-step instructions**
+
+### Electron App Releases
+1. **Create a release** on GitHub (tag: `v1.0.0`)
+2. **Automatically builds** for macOS, Linux, Windows
+3. **Download** from the release page!
+
+👉 **See [DEPLOYMENT.md](.github/DEPLOYMENT.md) for detailed instructions**
 
 ## Features
 

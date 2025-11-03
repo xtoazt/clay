@@ -1,4 +1,4 @@
-name: Build and Test
+name: CI - Build and Test
 
 on:
   push:
@@ -11,6 +11,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [20.x]
@@ -49,18 +50,10 @@ jobs:
         if (!(Test-Path "dist/renderer/index.html")) { exit 1 }
         if (!(Test-Path "dist/renderer/styles.css")) { exit 1 }
 
-    - name: Test on Linux
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        echo "Build completed successfully on Linux"
-
-    - name: Test on macOS
-      if: matrix.os == 'macos-latest'
-      run: |
-        echo "Build completed successfully on macOS"
-
-    - name: Test on Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo "Build completed successfully on Windows"
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-${{ matrix.os }}
+        path: dist/
+        retention-days: 7
 
