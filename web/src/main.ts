@@ -21,7 +21,6 @@ class ClayWebTerminal {
         background: '#1e1e2e',
         foreground: '#cdd6f4',
         cursor: '#cba6f7',
-        selection: 'rgba(203, 166, 247, 0.3)',
         black: '#45475a',
         red: '#f38ba8',
         green: '#a6e3a1',
