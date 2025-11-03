@@ -21,12 +21,31 @@
         </div>
         <div class="terminal-title">Clay Terminal</div>
         <div class="header-actions">
+          <button class="model-btn" id="model-btn" title="Select AI Model">
+            🤖 Model
+          </button>
           <button class="install-btn" id="install-btn" style="display: none;">
             📥 Install
           </button>
         </div>
       </div>
       <div class="terminal-body" id="terminal"></div>
+      <div class="error-banner" id="error-banner" style="display: none;">
+        <div class="error-content">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text" id="error-text"></span>
+          <button class="quick-fix-btn" id="quick-fix-btn">🔧 Quick Fix</button>
+        </div>
+      </div>
+    </div>
+    <div class="model-selector-overlay" id="model-selector" style="display: none;">
+      <div class="model-selector-content">
+        <div class="model-selector-header">
+          <h3>Select AI Model</h3>
+          <button class="close-btn" id="close-model-selector">×</button>
+        </div>
+        <div class="model-list" id="model-list"></div>
+      </div>
     </div>
     <div class="loading-overlay" id="loading">
       <div class="loading-spinner"></div>
