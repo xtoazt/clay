@@ -4,9 +4,17 @@
  */
 
 export function generateHTML(): string {
-  const base = process.env.GITHUB_REPOSITORY 
-    ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` 
-    : '/';
+  // Runtime: detect base path from window location (browser-compatible)
+  let base = '/';
+  
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    // Extract base path (e.g., /clay/ from /clay/)
+    const match = path.match(/^(\/[^\/]+\/)/);
+    if (match) {
+      base = match[1];
+    }
+  }
   
   return `<!DOCTYPE html>
 <html lang="en">

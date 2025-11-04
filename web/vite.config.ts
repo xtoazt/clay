@@ -5,9 +5,9 @@ import { join } from 'path';
 
 // Generate HTML from TypeScript
 function generateHTMLFromTS(): string {
-  const base = process.env.GITHUB_REPOSITORY 
-    ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` 
-    : '/';
+  // Use process.env in Node.js context (build time)
+  const repo = process.env.GITHUB_REPOSITORY;
+  const base = repo ? `/${repo.split('/')[1]}/` : '/';
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -54,9 +54,10 @@ function htmlGeneratorPlugin() {
 }
 
 export default defineConfig({
-  base: process.env.GITHUB_REPOSITORY 
-    ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` 
-    : '/',
+  base: (() => {
+    const repo = process.env.GITHUB_REPOSITORY;
+    return repo ? `/${repo.split('/')[1]}/` : '/';
+  })(),
   plugins: [
     htmlGeneratorPlugin(),
     VitePWA({
