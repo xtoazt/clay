@@ -5,6 +5,8 @@ import { CanvasAddon } from 'xterm-addon-canvas';
 import { BridgeBackend } from './bridge-backend';
 import { WebWorkerBackendWrapper } from './backend-worker-wrapper';
 import { SessionEncoder } from './session-encoder';
+import { initializeHTML } from './html-generator';
+import './styles.css';
 
 // Helper to get hostname (fallback for browser)
 function getHostname(): string {
@@ -105,15 +107,23 @@ class ClayWebTerminal {
     // Expose to window for UI access
     (window as any).clayTerminal = this;
 
-    this.initializeTerminal();
-    this.setupBackend();
-    this.initializeStatusBar();
-    this.checkForShareLink();
-    
-    // Initialize Lucide icons
-    if (typeof (window as any).lucide !== 'undefined') {
-      (window as any).lucide.createIcons();
-    }
+    // Wait for DOM to be ready before initializing
+    setTimeout(() => {
+      this.initializeTerminal();
+      this.setupBackend();
+      this.initializeStatusBar();
+      this.checkForShareLink();
+      
+      // Initialize Lucide icons
+      if (typeof (window as any).lucide !== 'undefined') {
+        (window as any).lucide.createIcons();
+      }
+      
+      // Hide loading overlay after a delay
+      setTimeout(() => {
+        this.hideLoading();
+      }, 1000);
+    }, 100);
   }
 
   private checkForShareLink(): void {
@@ -1545,7 +1555,33 @@ class UIBuilder {
   }
   
   public initializeTerminal(): void {
-    this.terminal = new ClayWebTerminal();
+    try {
+      // Wait a bit to ensure DOM is ready
+      setTimeout(() => {
+        const terminalElement = document.getElementById('terminal');
+        if (!terminalElement) {
+          console.error('Terminal element not found, retrying...');
+          setTimeout(() => this.initializeTerminal(), 100);
+          return;
+        }
+        
+        this.terminal = new ClayWebTerminal();
+        
+        // Hide loading overlay after terminal is initialized
+        setTimeout(() => {
+          const loading = document.getElementById('loading');
+          if (loading) {
+            loading.classList.add('hidden');
+          }
+        }, 500);
+      }, 100);
+    } catch (error) {
+      console.error('Failed to initialize terminal:', error);
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.innerHTML = '<p>Failed to initialize terminal. Please refresh the page.</p>';
+      }
+    }
   }
   
   public getTerminal(): ClayWebTerminal | null {
@@ -1553,8 +1589,14 @@ class UIBuilder {
   }
 }
 
+// Initialize HTML structure first
+initializeHTML();
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  // Ensure HTML structure is initialized
+  initializeHTML();
+  
   // Build UI dynamically
   const uiBuilder = new UIBuilder();
   

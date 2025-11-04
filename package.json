@@ -22,7 +22,7 @@
     "build:electron": "tsc && npm run copy-files",
     "build:backend": "cd backend && npm install",
     "build:all": "npm run build:backend && npm run build:web",
-    "copy-files": "node -e \"const fs=require('fs');const path=require('path');fs.mkdirSync('dist/renderer',{recursive:true});fs.copyFileSync('renderer/index.html','dist/renderer/index.html');fs.copyFileSync('renderer/styles.css','dist/renderer/styles.css');\"",
+    "copy-files": "node -e \"const fs=require('fs');const path=require('path');fs.mkdirSync('dist/renderer',{recursive:true});fs.copyFileSync('renderer/styles.css','dist/renderer/styles.css');\"",
     "prepublishOnly": "npm run build:package",
     "dev": "cd web && npm run dev",
     "start": "npm run build && electron .",
