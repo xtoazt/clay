@@ -10,28 +10,93 @@ html, body, #app-root {
 }
 
 body {
-  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+  @apply bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  background-attachment: fixed;
 }
 
-/* Terminal styling - Redesigned */
+/* Enhanced Terminal styling */
 #terminal {
-  @apply bg-gray-950;
-  padding: 1rem;
-  border-radius: 0.5rem;
+  @apply bg-gray-950/95 backdrop-blur-sm;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 
+              0 0 0 1px rgba(255, 255, 255, 0.05),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .xterm {
   padding: 1rem;
-  background: #0a0a0a !important;
+  background: transparent !important;
 }
 
 .xterm-viewport {
-  background: #0a0a0a !important;
+  background: transparent !important;
+  border-radius: 0.5rem;
 }
 
 .xterm-screen {
-  background: #0a0a0a !important;
+  background: transparent !important;
+}
+
+/* Glassmorphism effects */
+.glass {
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Status bar enhancements */
+#status-bar {
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Status indicator glow */
+.status-dot.connected {
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.status-dot.connecting {
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+}
+
+.status-dot.error {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
 }
 
 

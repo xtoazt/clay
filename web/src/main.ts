@@ -57,9 +57,22 @@ class ClayWebTerminal {
   private sessionCommands: string[] = []; // Track all commands for sharing
   private isReplayingSession: boolean = false;
   private isChromeOS: boolean = false;
+  private historySearchMode: boolean = false;
+  private historySearchQuery: string = '';
+  private autocompleteSuggestions: string[] = [];
+  private autocompleteIndex: number = -1;
   private webvmStatus: 'connected' | 'disconnected' | 'connecting' | 'error' = 'disconnected';
   private websocketStatus: 'connected' | 'disconnected' | 'connecting' | 'error' = 'disconnected';
   private bridgeStatus: 'connected' | 'disconnected' | 'connecting' | 'error' = 'disconnected';
+  private searchProvider: 'searxng' | 'langsearch' = 'langsearch';
+  private cpuUsage: number = 0;
+  private searxngRunning: boolean = false;
+  private readonly LANGSEARCH_API_KEY = 'sk-d8b452643825433199b288a074ce3e28';
+  private readonly LANGSEARCH_API_URL = 'https://api.langsearch.com/v1/web-search';
+  private readonly CPU_THRESHOLD = 70; // Switch to LangSearch if CPU > 70%
+  private lastSearchResults: any[] = []; // Store last search results for AI/terminal access
+  private lastSearchQuery: string = ''; // Store last search query
+  private searchStatus: 'idle' | 'searching' | 'ready' = 'idle';
 
   constructor() {
     // Redesigned terminal with modern dark theme
@@ -218,11 +231,13 @@ class ClayWebTerminal {
     this.updateAIStatus('idle');
     this.updateOSInfo();
     this.updateCPUUsage();
+    this.updateSearchStatus('idle');
     
     // Periodically check backend status and CPU
     setInterval(() => {
       this.checkBackendComponents();
       this.updateCPUUsage();
+      this.updateSearchStatus(this.searchStatus); // Refresh search status display
     }, 2000);
     
     // Setup model selector
@@ -279,7 +294,19 @@ class ClayWebTerminal {
         if (result.exitCode === 0 && result.output.trim()) {
           const cpu = parseFloat(result.output.trim());
           if (!isNaN(cpu)) {
+            this.cpuUsage = cpu;
             cpuText.textContent = `CPU: ${cpu.toFixed(1)}%`;
+            
+            // Switch search provider based on CPU usage
+            if (cpu > this.CPU_THRESHOLD && this.searchProvider === 'searxng') {
+              this.searchProvider = 'langsearch';
+              if (this.searxngRunning) {
+                this.stopSearXNG();
+              }
+            } else if (cpu <= this.CPU_THRESHOLD && this.searchProvider === 'langsearch' && !this.searxngRunning) {
+              // Consider starting SearXNG if CPU is low
+              // Don't auto-start, let user decide
+            }
           }
         }
       }).catch(() => {
@@ -302,6 +329,251 @@ class ClayWebTerminal {
         }
       }
     }
+  }
+  
+  private async startSearXNG(): Promise<boolean> {
+    if (this.searxngRunning) {
+      return true;
+    }
+    
+    if (!this.useBridge || !this.backend) {
+      return false;
+    }
+    
+    try {
+      this.terminal.write(`\r\n\x1b[36m[Search]\x1b[0m Starting SearXNG on WebVM...\r\n`);
+      
+      // Check if SearXNG is installed
+      const checkResult = await this.backend.executeCommand('which searxng || echo "not found"');
+      if (checkResult.output.includes('not found')) {
+        // Install SearXNG
+        this.terminal.write(`\x1b[33m[Search]\x1b[0m Installing SearXNG...\r\n`);
+        const installResult = await this.backend.executeCommand('pip install searxng || docker pull searxng/searxng || echo "install failed"');
+        if (installResult.output.includes('install failed')) {
+          this.terminal.write(`\x1b[31m[Search]\x1b[0m Failed to install SearXNG. Using LangSearch instead.\r\n`);
+          this.searchProvider = 'langsearch';
+          return false;
+        }
+      }
+      
+      // Start SearXNG (simplified - would need proper setup)
+      this.terminal.write(`\x1b[33m[Search]\x1b[0m SearXNG installation/startup requires Docker or Python environment.\r\n`);
+      this.terminal.write(`\x1b[33m[Search]\x1b[0m Using LangSearch API for now.\r\n`);
+      this.searchProvider = 'langsearch';
+      return false;
+    } catch (error) {
+      this.terminal.write(`\x1b[31m[Search]\x1b[0m Error starting SearXNG: ${error}\r\n`);
+      this.searchProvider = 'langsearch';
+      return false;
+    }
+  }
+  
+  private async stopSearXNG(): Promise<void> {
+    if (!this.searxngRunning) return;
+    
+    try {
+      if (this.backend) {
+        await this.backend.executeCommand('pkill -f searxng || docker stop searxng || true');
+      }
+      this.searxngRunning = false;
+      this.terminal.write(`\r\n\x1b[33m[Search]\x1b[0m SearXNG stopped. Switching to LangSearch.\r\n`);
+    } catch (error) {
+      console.error('Error stopping SearXNG:', error);
+    }
+  }
+  
+  private async performWebSearch(query: string, silent: boolean = false): Promise<any[]> {
+    if (!silent) {
+      this.terminal.write(`\r\n\x1b[36m[Search]\x1b[0m Searching for: "${query}"\r\n`);
+    }
+    
+    this.updateSearchStatus('searching');
+    this.lastSearchQuery = query;
+    this.lastSearchResults = [];
+    
+    // Check CPU and decide provider
+    if (this.cpuUsage > this.CPU_THRESHOLD && this.searchProvider === 'searxng') {
+      if (!silent) {
+        this.terminal.write(`\x1b[33m[Search]\x1b[0m CPU usage high (${this.cpuUsage.toFixed(1)}%). Using LangSearch API.\r\n`);
+      }
+      this.searchProvider = 'langsearch';
+      if (this.searxngRunning) {
+        await this.stopSearXNG();
+      }
+    }
+    
+    if (this.searchProvider === 'searxng' && !this.searxngRunning) {
+      const started = await this.startSearXNG();
+      if (!started) {
+        this.searchProvider = 'langsearch';
+      }
+    }
+    
+    let results: any[] = [];
+    if (this.searchProvider === 'langsearch') {
+      results = await this.searchWithLangSearch(query, silent);
+    } else {
+      results = await this.searchWithSearXNG(query, silent);
+    }
+    
+    this.lastSearchResults = results;
+    this.updateSearchStatus('ready');
+    return results;
+  }
+  
+  private updateSearchStatus(status: 'idle' | 'searching' | 'ready'): void {
+    this.searchStatus = status;
+    const searchDot = document.getElementById('search-dot');
+    const searchText = document.getElementById('search-text');
+    
+    if (!searchDot || !searchText) return;
+    
+    const provider = this.searchProvider === 'searxng' ? 'SearXNG' : 'LangSearch';
+    
+    switch (status) {
+      case 'searching':
+        searchDot.className = 'w-2 h-2 rounded-full bg-yellow-500 animate-pulse-slow';
+        searchText.textContent = `Search: ${provider}...`;
+        break;
+      case 'ready':
+        searchDot.className = 'w-2 h-2 rounded-full bg-green-500 status-dot connected';
+        searchText.textContent = `Search: ${provider}`;
+        break;
+      case 'idle':
+      default:
+        searchDot.className = 'w-2 h-2 rounded-full bg-gray-500';
+        searchText.textContent = `Search: ${provider}`;
+        break;
+    }
+  }
+  
+  private async searchWithLangSearch(query: string, silent: boolean = false): Promise<any[]> {
+    try {
+      if (!silent) {
+        this.terminal.write(`\x1b[33m[Search]\x1b[0m Using LangSearch API...\r\n`);
+      }
+      
+      const response = await fetch(this.LANGSEARCH_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.LANGSEARCH_API_KEY}`
+        },
+        body: JSON.stringify({
+          query: query,
+          freshness: 'noLimit',
+          summary: true,
+          count: 10
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.code === 200 && data.data && data.data.webPages && data.data.webPages.value) {
+        const results = data.data.webPages.value;
+        
+        if (!silent) {
+          this.terminal.write(`\r\n\x1b[32m[Search Results]\x1b[0m Found ${results.length} result(s)\r\n`);
+          this.terminal.write(`\x1b[36m═══════════════════════════════════════════════════════════\x1b[0m\r\n\r\n`);
+          
+          results.forEach((result: any, index: number) => {
+            this.terminal.write(`\x1b[33m[${index + 1}]\x1b[0m \x1b[1m${result.name || 'No title'}\x1b[0m\r\n`);
+            this.terminal.write(`\x1b[36mURL:\x1b[0m ${result.url || result.displayUrl || 'N/A'}\r\n`);
+            
+            if (result.snippet) {
+              this.terminal.write(`\x1b[37m${result.snippet.substring(0, 200)}${result.snippet.length > 200 ? '...' : ''}\x1b[0m\r\n`);
+            }
+            
+            if (result.summary && result.summary.length > result.snippet?.length) {
+              this.terminal.write(`\x1b[90m${result.summary.substring(0, 300)}${result.summary.length > 300 ? '...' : ''}\x1b[0m\r\n`);
+            }
+            
+            this.terminal.write('\r\n');
+          });
+          
+          this.terminal.write(`\x1b[36m═══════════════════════════════════════════════════════════\x1b[0m\r\n`);
+        }
+        
+        return results;
+      } else {
+        if (!silent) {
+          this.terminal.write(`\x1b[31m[Search Error]\x1b[0m No results found or invalid response.\r\n`);
+        }
+        return [];
+      }
+    } catch (error: any) {
+      if (!silent) {
+        this.terminal.write(`\r\n\x1b[31m[Search Error]\x1b[0m ${error.message || 'Failed to perform search'}\r\n`);
+      }
+      return [];
+    }
+  }
+  
+  private async searchWithSearXNG(query: string, silent: boolean = false): Promise<any[]> {
+    try {
+      // SearXNG would be running on localhost:port
+      // This is a placeholder - would need actual SearXNG setup
+      const searxngUrl = 'http://127.0.0.1:8888';
+      const response = await fetch(`${searxngUrl}/search?q=${encodeURIComponent(query)}&format=json`);
+      
+      if (!response.ok) {
+        throw new Error('SearXNG not responding');
+      }
+      
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        if (!silent) {
+          this.terminal.write(`\r\n\x1b[32m[Search Results]\x1b[0m Found ${data.results.length} result(s) via SearXNG\r\n`);
+          data.results.forEach((result: any, index: number) => {
+            this.terminal.write(`\r\n\x1b[33m[${index + 1}]\x1b[0m \x1b[1m${result.title}\x1b[0m\r\n`);
+            this.terminal.write(`\x1b[36mURL:\x1b[0m ${result.url}\r\n`);
+            this.terminal.write(`\x1b[37m${result.content || ''}\x1b[0m\r\n`);
+          });
+        }
+        
+        return data.results;
+      }
+      return [];
+    } catch (error: any) {
+      if (!silent) {
+        this.terminal.write(`\r\n\x1b[33m[Search]\x1b[0m SearXNG unavailable. Falling back to LangSearch...\r\n`);
+      }
+      this.searchProvider = 'langsearch';
+      return await this.searchWithLangSearch(query, silent);
+    }
+  }
+  
+  // Public method for AI to access search functionality
+  public async searchForAI(query: string): Promise<string> {
+    const results = await this.performWebSearch(query, true);
+    
+    if (results.length === 0) {
+      return 'No search results found.';
+    }
+    
+    // Format results as text for AI
+    let formattedResults = `Search results for "${query}":\n\n`;
+    results.slice(0, 5).forEach((result: any, index: number) => {
+      formattedResults += `${index + 1}. ${result.name || result.title || 'No title'}\n`;
+      formattedResults += `   URL: ${result.url || result.displayUrl || 'N/A'}\n`;
+      formattedResults += `   Summary: ${result.summary || result.snippet || result.content || 'No summary'}\n\n`;
+    });
+    
+    return formattedResults;
+  }
+  
+  // Get last search results for AI context
+  public getLastSearchResults(): any[] {
+    return this.lastSearchResults;
+  }
+  
+  public getLastSearchQuery(): string {
+    return this.lastSearchQuery;
   }
   
   private checkBackendComponents(): void {
@@ -473,6 +745,32 @@ class ClayWebTerminal {
         // Handle locally if not connected
         this.handleLocalCommand(data);
       }
+    });
+    
+    // Enhanced keyboard shortcuts
+    this.terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      // Tab completion
+      if (event.key === 'Tab' && !event.shiftKey) {
+        event.preventDefault();
+        this.handleTabCompletion();
+        return false;
+      }
+      
+      // Ctrl+R for history search
+      if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+        event.preventDefault();
+        this.startHistorySearch();
+        return false;
+      }
+      
+      // Escape to cancel search
+      if (event.key === 'Escape' && this.historySearchMode) {
+        event.preventDefault();
+        this.cancelHistorySearch();
+        return false;
+      }
+      
+      return true;
     });
     
     // Prevent Enter key from causing page scroll
@@ -770,7 +1068,91 @@ class ClayWebTerminal {
     }
   }
 
+  private handleTabCompletion(): void {
+    if (!this.currentLine.trim()) return;
+    
+    const parts = this.currentLine.trim().split(/\s+/);
+    const lastPart = parts[parts.length - 1];
+    
+    // Simple file/directory completion
+    if (lastPart.includes('/') || lastPart === '.' || lastPart === '..') {
+      // Path completion - would need file system access
+      this.terminal.write('\x07'); // Bell sound
+      return;
+    }
+    
+    // Command completion
+    const commonCommands = ['ls', 'cd', 'pwd', 'cat', 'echo', 'clear', 'help', 'mkdir', 'touch', 'rm', 'mv', 'cp', 'grep', 'find', 'ps', 'kill', 'top', 'htop', 'nano', 'vim', 'git', 'npm', 'node', 'python', 'python3', 'bash', 'sh', 'curl', 'wget'];
+    const matches = commonCommands.filter(cmd => cmd.startsWith(lastPart.toLowerCase()));
+    
+    if (matches.length === 1) {
+      // Single match - complete it
+      const completion = matches[0].substring(lastPart.length);
+      this.currentLine += completion;
+      this.terminal.write(completion);
+    } else if (matches.length > 1) {
+      // Multiple matches - show options
+      this.terminal.write('\r\n');
+      matches.forEach(cmd => {
+        this.terminal.write(`  ${cmd}`);
+      });
+      this.terminal.write('\r\n');
+      this.writePrompt();
+      this.terminal.write(this.currentLine);
+    } else {
+      this.terminal.write('\x07'); // Bell sound for no match
+    }
+  }
+  
+  private startHistorySearch(): void {
+    this.historySearchMode = true;
+    this.historySearchQuery = '';
+    this.terminal.write('\r\n\x1b[33m(reverse-i-search)\'\'\x1b[0m: ');
+  }
+  
+  private cancelHistorySearch(): void {
+    this.historySearchMode = false;
+    this.historySearchQuery = '';
+    this.terminal.write('\r\n');
+    this.writePrompt();
+    this.terminal.write(this.currentLine);
+  }
+  
   private handleLocalCommand(data: string): void {
+    // Handle history search mode
+    if (this.historySearchMode) {
+      if (data === '\r' || data === '\n') {
+        // Execute found command
+        this.historySearchMode = false;
+        const matches = this.commandHistory.filter(cmd => 
+          cmd.toLowerCase().includes(this.historySearchQuery.toLowerCase())
+        );
+        if (matches.length > 0) {
+          this.currentLine = matches[matches.length - 1];
+          this.terminal.write('\r\n');
+          this.writePrompt();
+          this.terminal.write(this.currentLine);
+        } else {
+          this.terminal.write('\r\n');
+          this.writePrompt();
+        }
+        this.historySearchQuery = '';
+      } else if (data === '\x7f' || data === '\b') {
+        // Backspace in search
+        if (this.historySearchQuery.length > 0) {
+          this.historySearchQuery = this.historySearchQuery.slice(0, -1);
+          this.terminal.write('\b \b');
+          this.updateHistorySearch();
+        }
+      } else if (data.length === 1 && data.charCodeAt(0) >= 32) {
+        // Add character to search
+        this.historySearchQuery += data;
+        this.terminal.write(data);
+        this.updateHistorySearch();
+      }
+      return;
+    }
+    
     // Handle special keys
     if (data === '\r' || data === '\n') {
       // Enter pressed - prevent page scrolling
@@ -779,6 +1161,9 @@ class ClayWebTerminal {
       
       if (command) {
         this.commandHistory.push(command);
+        if (this.commandHistory.length > 1000) {
+          this.commandHistory.shift();
+        }
         this.historyIndex = -1;
         this.executeCommand(command);
       } else {
@@ -786,6 +1171,8 @@ class ClayWebTerminal {
       }
       
       this.currentLine = '';
+      this.autocompleteIndex = -1;
+      this.autocompleteSuggestions = [];
     } else if (data === '\x7f' || data === '\b') {
       // Backspace
       if (this.currentLine.length > 0) {
@@ -829,6 +1216,20 @@ class ClayWebTerminal {
       this.terminal.write(data);
     }
   }
+  
+  private updateHistorySearch(): void {
+    const matches = this.commandHistory.filter(cmd => 
+      cmd.toLowerCase().includes(this.historySearchQuery.toLowerCase())
+    );
+    
+    if (matches.length > 0) {
+      const match = matches[matches.length - 1];
+      // Show search result
+      this.terminal.write(`\r\x1b[K\x1b[33m(reverse-i-search)\'${this.historySearchQuery}\'\x1b[0m: ${match}`);
+    } else {
+      this.terminal.write(`\r\x1b[K\x1b[33m(reverse-i-search)\'${this.historySearchQuery}\'\x1b[0m: `);
+    }
+  }
 
 
   private async executeCommand(command: string): Promise<void> {
@@ -840,26 +1241,64 @@ class ClayWebTerminal {
     }
 
     if (command === 'help') {
-      this.terminal.write(`\r\n\x1b[36mAvailable Commands:\x1b[0m\r\n`);
-      this.terminal.write(`  \x1b[32mclear\x1b[0m, \x1b[32mcls\x1b[0m - Clear terminal\r\n`);
-      this.terminal.write(`  \x1b[32mhelp\x1b[0m - Show this help\r\n`);
-      this.terminal.write(`  \x1b[32m@ai <question>\x1b[0m - Ask AI assistant (always available)\r\n`);
+      this.terminal.write(`\r\n\x1b[36m╔════════════════════════════════════════╗\x1b[0m\r\n`);
+      this.terminal.write(`\x1b[36m║\x1b[0m  \x1b[1mClay Terminal - Available Commands\x1b[0m  \x1b[36m║\x1b[0m\r\n`);
+      this.terminal.write(`\x1b[36m╚════════════════════════════════════════╝\x1b[0m\r\n\r\n`);
+      
+      this.terminal.write(`\x1b[33mBasic Commands:\x1b[0m\r\n`);
+      this.terminal.write(`  \x1b[32mclear\x1b[0m, \x1b[32mcls\x1b[0m     - Clear terminal screen\r\n`);
+      this.terminal.write(`  \x1b[32mhelp\x1b[0m               - Show this help message\r\n`);
+      this.terminal.write(`  \x1b[32m@ai <question>\x1b[0m    - Ask AI assistant (always available)\r\n`);
+      this.terminal.write(`  \x1b[32msearch <query>\x1b[0m     - Web search (uses SearXNG or LangSearch)\r\n`);
+      this.terminal.write(`  \x1b[32m@search <query>\x1b[0m   - Web search (alternative syntax)\r\n\r\n`);
       
       // Show device-specific commands
       if (this.useBridge) {
-        this.terminal.write(`\r\n\x1b[36mSystem Commands (Full Access):\x1b[0m\r\n`);
+        this.terminal.write(`\x1b[33mSystem Commands (Full Access):\x1b[0m\r\n`);
         this.terminal.write(`  All standard Unix/Linux commands available\r\n`);
-        this.terminal.write(`  Full bash shell with real system access\r\n`);
+        this.terminal.write(`  Full bash shell with real system access\r\n\r\n`);
       } else {
-        this.terminal.write(`\r\n\x1b[36mBrowser Commands:\x1b[0m\r\n`);
-        this.terminal.write(`  \x1b[32mls\x1b[0m - List files\r\n`);
-        this.terminal.write(`  \x1b[32mcd\x1b[0m - Change directory\r\n`);
-        this.terminal.write(`  \x1b[32mpwd\x1b[0m - Print working directory\r\n`);
-        this.terminal.write(`  \x1b[32mecho\x1b[0m - Echo text\r\n`);
-        this.terminal.write(`  \x1b[32mcat\x1b[0m - Display file contents\r\n`);
-        this.terminal.write(`\r\n\x1b[33mNote:\x1b[0m Start bridge server for full system access\r\n`);
+        this.terminal.write(`\x1b[33mBrowser Commands:\x1b[0m\r\n`);
+        this.terminal.write(`  \x1b[32mls\x1b[0m      - List files and directories\r\n`);
+        this.terminal.write(`  \x1b[32mcd\x1b[0m      - Change directory\r\n`);
+        this.terminal.write(`  \x1b[32mpwd\x1b[0m     - Print working directory\r\n`);
+        this.terminal.write(`  \x1b[32mecho\x1b[0m    - Echo text to terminal\r\n`);
+        this.terminal.write(`  \x1b[32mcat\x1b[0m     - Display file contents\r\n`);
+        this.terminal.write(`  \x1b[32mtouch\x1b[0m   - Create empty file\r\n`);
+        this.terminal.write(`  \x1b[32mmkdir\x1b[0m   - Create directory\r\n`);
+        this.terminal.write(`  \x1b[32mrm\x1b[0m      - Remove file/directory\r\n\r\n`);
+        this.terminal.write(`\x1b[33mNote:\x1b[0m Start bridge server for full system access\r\n\r\n`);
       }
       
+      this.terminal.write(`\x1b[33mKeyboard Shortcuts:\x1b[0m\r\n`);
+      this.terminal.write(`  \x1b[32mTab\x1b[0m          - Command/file completion\r\n`);
+      this.terminal.write(`  \x1b[32mCtrl+R\x1b[0m       - Reverse history search\r\n`);
+      this.terminal.write(`  \x1b[32mCtrl+C\x1b[0m       - Copy selection or interrupt\r\n`);
+      this.terminal.write(`  \x1b[32mCtrl+V\x1b[0m       - Paste from clipboard\r\n`);
+      this.terminal.write(`  \x1b[32m↑/↓\x1b[0m          - Command history navigation\r\n\r\n`);
+      
+      this.terminal.write(`\x1b[33mSearch Features:\x1b[0m\r\n`);
+      this.terminal.write(`  \x1b[32msearch <query>\x1b[0m - Web search (auto-switches based on CPU)\r\n`);
+      this.terminal.write(`  \x1b[36m  • SearXNG\x1b[0m - Self-hosted when CPU < ${this.CPU_THRESHOLD}%\r\n`);
+      this.terminal.write(`  \x1b[36m  • LangSearch\x1b[0m - API-based when CPU > ${this.CPU_THRESHOLD}%\r\n\r\n`);
+      
+      this.writePrompt();
+      return;
+    }
+
+    if (command.startsWith('search ') || command.startsWith('@search ')) {
+      const query = command.startsWith('search ') 
+        ? command.substring(7).trim() 
+        : command.substring(8).trim();
+      
+      if (!query) {
+        this.terminal.write(`\r\n\x1b[33m[Usage]\x1b[0m search <query> or @search <query>\r\n`);
+        this.terminal.write(`\x1b[33m[Example]\x1b[0m search python tutorial\r\n`);
+        this.writePrompt();
+        return;
+      }
+      
+      await this.performWebSearch(query);
       this.writePrompt();
       return;
     }
@@ -1093,11 +1532,25 @@ class ClayWebTerminal {
       // Detect if this is a command request (action) vs a question
       const isCommandRequest = this.isCommandRequest(question);
       
+      // Check if question might need web search
+      const needsSearch = this.shouldPerformSearch(question);
+      let searchContext = '';
+      
+      if (needsSearch) {
+        this.terminal.write(`\r\n\x1b[36m[AI]\x1b[0m Performing web search for better context...\r\n`);
+        const searchQuery = this.extractSearchQuery(question);
+        searchContext = await this.searchForAI(searchQuery);
+      }
+      
       if (isCommandRequest) {
         // Silent execution mode - just do it, don't explain
         this.terminal.write(`\r\n\x1b[36m[AI]\x1b[0m Executing...\r\n`);
+        const prompt = searchContext 
+          ? `User wants to: ${question}.\n\nContext from web search:\n${searchContext}\n\nProvide ONLY the command(s) to execute, no explanations. Format in code blocks.`
+          : `User wants to: ${question}. Provide ONLY the command(s) to execute, no explanations. Format in code blocks.`;
+        
         const response = await this.aiAssistant.askQuestion(
-          `User wants to: ${question}. Provide ONLY the command(s) to execute, no explanations. Format in code blocks.`,
+          prompt,
           this.currentDirectory,
           this.commandHistory
         );
@@ -1120,7 +1573,11 @@ class ClayWebTerminal {
       } else {
         // Question mode - respond with explanation
         this.terminal.write(`\r\n\x1b[36m[AI]\x1b[0m Thinking...\r\n`);
-        const response = await this.aiAssistant.askQuestion(question, this.currentDirectory, this.commandHistory);
+        const prompt = searchContext 
+          ? `${question}\n\nUse this context from web search to provide accurate information:\n${searchContext}\n\nIf the search results are relevant, reference them in your answer.`
+          : question;
+        
+        const response = await this.aiAssistant.askQuestion(prompt, this.currentDirectory, this.commandHistory);
         
         // Parse and display markdown response
         this.displayMarkdownResponse(response);
@@ -1160,6 +1617,38 @@ class ClayWebTerminal {
       }
       this.writePrompt();
     }
+  }
+  
+  private shouldPerformSearch(question: string): boolean {
+    const searchKeywords = [
+      'latest', 'recent', 'current', 'news', 'what is', 'who is', 'when did', 'where is',
+      'how to', 'tutorial', 'guide', 'explain', 'tell me about', 'information about',
+      'search', 'find', 'look up', 'web', 'online', 'internet', 'google', 'wikipedia'
+    ];
+    
+    const lowerQuestion = question.toLowerCase();
+    return searchKeywords.some(keyword => lowerQuestion.includes(keyword));
+  }
+  
+  private extractSearchQuery(question: string): string {
+    // Remove AI-specific prefixes and extract the actual query
+    let query = question
+      .replace(/^search\s+for\s+/i, '')
+      .replace(/^find\s+/i, '')
+      .replace(/^look\s+up\s+/i, '')
+      .replace(/^what\s+is\s+/i, '')
+      .replace(/^who\s+is\s+/i, '')
+      .replace(/^tell\s+me\s+about\s+/i, '')
+      .replace(/^information\s+about\s+/i, '')
+      .replace(/^explain\s+/i, '')
+      .trim();
+    
+    // If query is empty or too short, use the original question
+    if (!query || query.length < 3) {
+      query = question;
+    }
+    
+    return query;
   }
 
   private isCommandRequest(text: string): boolean {
@@ -1320,14 +1809,17 @@ class ClayWebTerminal {
 
   private printWelcomeMessage(): void {
     this.terminal.write('\r\n');
-    this.terminal.write(`\x1b[1m\x1b[36m╔═══════════════════════════════════════════════╗\x1b[0m\r\n`);
-    this.terminal.write(`\x1b[1m\x1b[36m║\x1b[0m  \x1b[1m\x1b[34mClay Terminal\x1b[0m - Professional Web Terminal      \x1b[1m\x1b[36m║\x1b[0m\r\n`);
-    this.terminal.write(`\x1b[1m\x1b[36m╚═══════════════════════════════════════════════╝\x1b[0m\r\n`);
+    this.terminal.write(`\x1b[1m\x1b[36m╔═══════════════════════════════════════════════════════╗\x1b[0m\r\n`);
+    this.terminal.write(`\x1b[1m\x1b[36m║\x1b[0m  \x1b[1m\x1b[34mClay Terminal\x1b[0m - Professional Web Terminal              \x1b[1m\x1b[36m║\x1b[0m\r\n`);
+    this.terminal.write(`\x1b[1m\x1b[36m╚═══════════════════════════════════════════════════════╝\x1b[0m\r\n`);
     this.terminal.write('\r\n');
-    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mAI Assistant\x1b[0m is always available - Type \x1b[33m@ai <question>\x1b[0m\r\n`);
-    this.terminal.write(`  \x1b[32m✓\x1b[0m Type \x1b[33mhelp\x1b[0m for available commands\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mAI Assistant\x1b[0m always available - Type \x1b[33m@ai <question>\x1b[0m\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mWeb Search\x1b[0m - Type \x1b[33msearch <query>\x1b[0m or \x1b[33m@search <query>\x1b[0m\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mTab Completion\x1b[0m - Press Tab for command/file completion\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mHistory Search\x1b[0m - Press \x1b[33mCtrl+R\x1b[0m to search command history\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mFile Operations\x1b[0m - touch, mkdir, rm, mv, cp supported\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m Type \x1b[33mhelp\x1b[0m for all available commands\r\n`);
     this.terminal.write(`  \x1b[32m✓\x1b[0m Commands adapt to your device capabilities\r\n`);
-    this.terminal.write(`  \x1b[32m✓\x1b[0m Dark mode enabled by default\r\n`);
     this.terminal.write('\r\n');
   }
 
@@ -1916,24 +2408,27 @@ function renderLanding(): void {
   const root = document.getElementById('app-root')!;
   root.innerHTML = '';
   const wrapper = document.createElement('div');
-  wrapper.className = 'min-h-screen flex flex-col bg-white dark:bg-gray-900';
+  wrapper.className = 'min-h-screen flex flex-col';
 
   const navbar = document.createElement('nav');
-  navbar.className = 'bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4';
+  navbar.className = 'glass border-b border-white/10 px-6 py-4 animate-fade-in';
   navbar.innerHTML = `
     <div class="flex items-center justify-between max-w-7xl mx-auto">
-      <div class="flex items-center gap-2">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Clay</h1>
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+          <span class="text-white font-bold text-lg">C</span>
+        </div>
+        <h1 class="text-2xl font-bold text-white">Clay Terminal</h1>
       </div>
       <div class="flex items-center gap-3">
-        <button id="install-pwa-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors" style="display: none;">
+        <button id="install-pwa-btn" class="px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-all hover:scale-105 border border-blue-500/50" style="display: none;">
           Install App
         </button>
-        <button id="theme-toggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-          <svg id="sun-icon" class="w-5 h-5 text-gray-900 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+        <button id="theme-toggle" class="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all border border-gray-700/50 hover:scale-105">
+          <svg id="sun-icon" class="w-5 h-5 text-gray-300 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
           </svg>
-          <svg id="moon-icon" class="w-5 h-5 text-gray-100 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+          <svg id="moon-icon" class="w-5 h-5 text-gray-300 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
             <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
           </svg>
         </button>
@@ -1942,23 +2437,31 @@ function renderLanding(): void {
   `;
 
   const hero = document.createElement('div');
-  hero.className = 'flex-1 flex items-center justify-center px-6 py-20 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900';
+  hero.className = 'flex-1 flex items-center justify-center px-6 py-20 relative overflow-hidden';
   hero.innerHTML = `
-    <div class="text-center max-w-4xl mx-auto">
-      <h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-        A professional terminal for the web
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse-slow"></div>
+    <div class="text-center max-w-4xl mx-auto relative z-10 animate-fade-in">
+      <div class="mb-6">
+        <div class="inline-block p-4 rounded-2xl glass mb-4">
+          <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto">
+            <span class="text-white font-bold text-3xl">C</span>
+          </div>
+        </div>
+      </div>
+      <h1 class="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
+        Professional Terminal for the Web
       </h1>
-      <p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-        Clay gives you a powerful, AI-augmented terminal experience right in your browser or Electron app. Install on ChromeOS for offline access.
+      <p class="text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
+        Clay gives you a powerful, AI-augmented terminal experience right in your browser. Full system access, tab completion, history search, and more.
       </p>
       <div class="flex gap-4 justify-center flex-wrap">
-        <button id="open-terminal" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+        <button id="open-terminal" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-semibold text-lg shadow-2xl hover:shadow-blue-500/50 transition-all transform hover:scale-105 border border-blue-400/50">
           Open Terminal
         </button>
-        <a href="https://www.npmjs.com/package/clay-util" target="_blank" class="px-6 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-900 dark:text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all">
+        <a href="https://www.npmjs.com/package/clay-util" target="_blank" class="px-8 py-4 glass hover:bg-gray-800/70 border border-white/20 text-white rounded-xl font-semibold text-lg shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
           Documentation
         </a>
-        <button id="install-pwa-btn-hero" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105" style="display: none;">
+        <button id="install-pwa-btn-hero" class="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl font-semibold text-lg shadow-2xl hover:shadow-green-500/50 transition-all transform hover:scale-105 border border-green-400/50" style="display: none;">
           📱 Install App
         </button>
       </div>
@@ -1966,33 +2469,47 @@ function renderLanding(): void {
   `;
 
   const dashboard = document.createElement('div');
-  dashboard.className = 'px-6 py-12 bg-gray-50 dark:bg-gray-800';
+  dashboard.className = 'px-6 py-12 relative';
   dashboard.innerHTML = `
     <div class="max-w-7xl mx-auto">
       <div class="grid gap-6 md:grid-cols-3">
-        <div class="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-600">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Now</h2>
-          <div id="clock" class="text-4xl font-bold text-gray-900 dark:text-white mb-2"></div>
-          <div id="date" class="text-sm text-gray-600 dark:text-gray-400"></div>
+        <div class="glass rounded-2xl shadow-2xl p-6 border border-white/10 hover:border-white/20 transition-all animate-fade-in">
+          <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Now
+          </h2>
+          <div id="clock" class="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"></div>
+          <div id="date" class="text-sm text-gray-400"></div>
         </div>
-        <div class="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-600 md:col-span-2">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Updates</h2>
-          <ul class="space-y-2 text-gray-700 dark:text-gray-300" id="updates-list">
-            <li class="flex items-start gap-2">
-              <span class="text-blue-500 mt-1">•</span>
-              <span>New Tailwind CSS-based UI</span>
+        <div class="glass rounded-2xl shadow-2xl p-6 border border-white/10 hover:border-white/20 transition-all md:col-span-2 animate-fade-in">
+          <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Latest Updates
+          </h2>
+          <ul class="space-y-3 text-gray-300" id="updates-list">
+            <li class="flex items-start gap-3">
+              <span class="text-blue-400 mt-1 font-bold">▸</span>
+              <span><span class="text-white font-medium">Tab Completion</span> - Press Tab for command/file autocomplete</span>
             </li>
-            <li class="flex items-start gap-2">
-              <span class="text-blue-500 mt-1">•</span>
-              <span>Dark mode support</span>
+            <li class="flex items-start gap-3">
+              <span class="text-blue-400 mt-1 font-bold">▸</span>
+              <span><span class="text-white font-medium">History Search</span> - Ctrl+R for reverse command search</span>
             </li>
-            <li class="flex items-start gap-2">
-              <span class="text-blue-500 mt-1">•</span>
-              <span>PWA installation for ChromeOS</span>
+            <li class="flex items-start gap-3">
+              <span class="text-blue-400 mt-1 font-bold">▸</span>
+              <span><span class="text-white font-medium">File Operations</span> - touch, mkdir, rm, mv, cp commands</span>
             </li>
-            <li class="flex items-start gap-2">
-              <span class="text-blue-500 mt-1">•</span>
-              <span>Terminal route moved to #terminal</span>
+            <li class="flex items-start gap-3">
+              <span class="text-blue-400 mt-1 font-bold">▸</span>
+              <span><span class="text-white font-medium">Enhanced UI</span> - Glassmorphism design with animations</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-blue-400 mt-1 font-bold">▸</span>
+              <span><span class="text-white font-medium">Status Bar</span> - Real-time status indicators with OS/CPU info</span>
             </li>
           </ul>
         </div>
@@ -2103,46 +2620,51 @@ function renderTerminalView(): void {
   const layout = document.createElement('div');
   layout.className = 'min-h-screen flex flex-col bg-gray-950';
   layout.innerHTML = `
-    <!-- Status Bar -->
-    <div id="status-bar" class="bg-gray-900 border-b border-gray-800 px-4 py-2">
+    <!-- Enhanced Status Bar with Glassmorphism -->
+    <div id="status-bar" class="glass px-4 py-2.5 animate-fade-in">
       <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-4 flex-wrap">
           <!-- Back Button -->
-          <button id="back-home" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-sm font-medium transition-colors flex items-center gap-1.5">
+          <button id="back-home" class="px-3 py-1.5 bg-gray-800/50 hover:bg-gray-700/50 text-gray-200 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 hover:scale-105 border border-gray-700/50">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
             Dashboard
           </button>
           
-          <!-- Status Indicators -->
-          <div class="flex items-center gap-3">
-            <div id="webvm-status" class="flex items-center gap-2 px-2 py-1 rounded bg-gray-800">
+          <!-- Status Indicators with Icons -->
+          <div class="flex items-center gap-2">
+            <div id="webvm-status" class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all">
               <div id="webvm-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-              <span id="webvm-text" class="text-xs text-gray-300">WebVM</span>
+              <span id="webvm-text" class="text-xs text-gray-300 font-medium">WebVM</span>
             </div>
             
-            <div id="bridge-status" class="flex items-center gap-2 px-2 py-1 rounded bg-gray-800">
+            <div id="bridge-status" class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all">
               <div id="bridge-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-              <span id="bridge-text" class="text-xs text-gray-300">Bridge</span>
+              <span id="bridge-text" class="text-xs text-gray-300 font-medium">Bridge</span>
             </div>
             
-            <div id="websocket-status" class="flex items-center gap-2 px-2 py-1 rounded bg-gray-800">
+            <div id="websocket-status" class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all">
               <div id="websocket-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-              <span id="websocket-text" class="text-xs text-gray-300">WebSocket</span>
+              <span id="websocket-text" class="text-xs text-gray-300 font-medium">WS</span>
             </div>
             
-            <div id="ai-status" class="flex items-center gap-2 px-2 py-1 rounded bg-gray-800">
+            <div id="ai-status" class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all">
               <div id="ai-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-              <span id="ai-text" class="text-xs text-gray-300">AI</span>
+              <span id="ai-text" class="text-xs text-gray-300 font-medium">AI</span>
             </div>
             
-            <div id="os-info" class="px-2 py-1 rounded bg-gray-800">
-              <span id="os-text" class="text-xs text-gray-300">OS: Unknown</span>
+            <div id="os-info" class="px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50">
+              <span id="os-text" class="text-xs text-gray-300 font-medium">OS: Unknown</span>
             </div>
             
-            <div id="cpu-usage" class="px-2 py-1 rounded bg-gray-800">
-              <span id="cpu-text" class="text-xs text-gray-300">CPU: --</span>
+            <div id="cpu-usage" class="px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50">
+              <span id="cpu-text" class="text-xs text-gray-300 font-medium">CPU: --</span>
+            </div>
+            
+            <div id="search-status" class="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all">
+              <div id="search-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="search-text" class="text-xs text-gray-300 font-medium">Search: --</span>
             </div>
           </div>
         </div>
@@ -2150,7 +2672,7 @@ function renderTerminalView(): void {
         <!-- Right Side Actions -->
         <div class="flex items-center gap-2">
           <!-- Model Selector -->
-          <select id="model-select" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs font-medium border border-gray-700 cursor-pointer">
+          <select id="model-select" class="px-3 py-1.5 bg-gray-800/50 hover:bg-gray-700/50 text-gray-200 rounded-lg text-xs font-medium border border-gray-700/50 cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50">
             <option value="codestral-2501">Codestral 2501</option>
             <option value="mistral-small-3.1-24b-instruct-2503">Mistral Small</option>
             <option value="deepseek-v3.1">DeepSeek V3.1</option>
@@ -2162,7 +2684,7 @@ function renderTerminalView(): void {
           </select>
           
           <!-- Theme Toggle -->
-          <button id="theme-toggle-terminal" class="p-1.5 rounded bg-gray-800 hover:bg-gray-700 transition-colors">
+          <button id="theme-toggle-terminal" class="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all border border-gray-700/50 hover:scale-105">
             <svg id="sun-icon-terminal" class="w-4 h-4 text-gray-400 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
             </svg>
@@ -2174,9 +2696,9 @@ function renderTerminalView(): void {
       </div>
     </div>
     
-    <!-- Terminal Container -->
-    <div class="flex-1 overflow-hidden bg-gray-950 p-4">
-      <div id="terminal" class="w-full h-full bg-gray-950 rounded-lg border border-gray-800 shadow-2xl"></div>
+    <!-- Enhanced Terminal Container with Glassmorphism -->
+    <div class="flex-1 overflow-hidden p-4">
+      <div id="terminal" class="w-full h-full glass rounded-xl shadow-2xl animate-fade-in"></div>
     </div>
   `;
   root.appendChild(layout);
