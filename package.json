@@ -56,26 +56,6 @@
     "url": "https://github.com/xtoazt/clay/issues"
   },
   "homepage": "https://github.com/xtoazt/clay#readme",
-  "peerDependencies": {
-    "xterm": "^5.0.0",
-    "xterm-addon-fit": "^3.0.0",
-    "xterm-addon-web-links": "^0.9.0",
-    "xterm-addon-canvas": "^0.5.0"
-  },
-  "peerDependenciesMeta": {
-    "xterm": {
-      "optional": false
-    },
-    "xterm-addon-fit": {
-      "optional": false
-    },
-    "xterm-addon-web-links": {
-      "optional": false
-    },
-    "xterm-addon-canvas": {
-      "optional": false
-    }
-  },
   "devDependencies": {
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
