@@ -445,55 +445,64 @@ class ClayWebTerminal {
   }
 
   private async initializeBackend(): Promise<void> {
-    // On ChromeOS, try to auto-connect to bridge
-    if (this.isChromeOS) {
-      const bridge = new BridgeBackend();
-      
-      try {
-        const isHealthy = await bridge.healthCheck();
-        if (isHealthy) {
-          console.log('[INFO] Bridge server found, using real system access');
-          this.backend = bridge;
-          this.useBridge = true;
-          this.updateBridgeStatus('connecting');
-          this.updateWebSocketStatus('connecting');
-          return;
-        }
-      } catch (error) {
-        console.log('[INFO] Bridge server not available');
+    // Always try to connect to bridge first (works on any platform, not just ChromeOS)
+    const bridge = new BridgeBackend();
+    
+    try {
+      const isHealthy = await bridge.healthCheck();
+      if (isHealthy) {
+        console.log('[INFO] Bridge server found, using real system access');
+        this.backend = bridge;
+        this.useBridge = true;
+        this.updateBridgeStatus('connecting');
+        this.updateWebSocketStatus('connecting');
+        return;
       }
-      
-      // On ChromeOS, keep trying to connect in background
-      this.updateBridgeStatus('disconnected');
-      
-      // Try connecting every 5 seconds on ChromeOS
-      const bridgeRetryInterval = setInterval(async () => {
-        if (!this.useBridge) {
-          try {
-            const bridge = new BridgeBackend();
-            const isHealthy = await bridge.healthCheck();
-            if (isHealthy) {
-              console.log('[INFO] Bridge server found, switching to real system access');
-              this.backend = bridge;
-              this.useBridge = true;
-              this.updateBridgeStatus('connecting');
-              this.updateWebSocketStatus('connecting');
-              await this.setupBackend();
-              clearInterval(bridgeRetryInterval);
-            }
-          } catch (error) {
-            // Continue trying
-          }
-        } else {
-          clearInterval(bridgeRetryInterval);
-        }
-      }, 5000);
+    } catch (error) {
+      console.log('[INFO] Bridge server not available, will retry...');
     }
     
-    // Fallback to Web Worker (browser-only)
+    // If bridge not available, try to connect in background
+    this.updateBridgeStatus('disconnected');
+    
+    // Try connecting every 3 seconds
+    const bridgeRetryInterval = setInterval(async () => {
+      if (!this.useBridge) {
+        try {
+          const bridge = new BridgeBackend();
+          const isHealthy = await bridge.healthCheck();
+          if (isHealthy) {
+            console.log('[INFO] Bridge server found, switching to real system access');
+            this.backend = bridge;
+            this.useBridge = true;
+            this.updateBridgeStatus('connecting');
+            this.updateWebSocketStatus('connecting');
+            await this.setupBackend();
+            clearInterval(bridgeRetryInterval);
+            
+            // Show message to user
+            this.terminal.write('\r\n\x1b[32m[INFO]\x1b[0m Connected to real system terminal!\r\n');
+            this.terminal.write('\x1b[33m[INFO]\x1b[0m All commands now execute on your system.\r\n');
+            this.writePrompt();
+          }
+        } catch (error) {
+          // Continue trying
+        }
+      } else {
+        clearInterval(bridgeRetryInterval);
+      }
+    }, 3000);
+    
+    // Fallback to Web Worker (browser-only, limited commands)
     this.backend = new WebWorkerBackendWrapper();
     this.useBridge = false;
     this.updateWebVMStatus('connecting');
+    
+    // Show helpful message
+    this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Running in browser mode (limited commands)\r\n');
+    this.terminal.write('\x1b[33m[INFO]\x1b[0m To enable real commands, start the bridge server:\r\n');
+    this.terminal.write('\x1b[36m[INFO]\x1b[0m   cd bridge && npm install && npm start\r\n');
+    this.terminal.write('\x1b[33m[INFO]\x1b[0m The terminal will auto-connect when bridge is available.\r\n');
   }
 
   private async setupBackend(): Promise<void> {
@@ -505,9 +514,10 @@ class ClayWebTerminal {
       if (this.useBridge) {
         this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Connecting to Clay Terminal Bridge...\r\n');
         this.terminal.write('\x1b[32m[INFO]\x1b[0m Real system command execution enabled!\r\n');
+        this.terminal.write('\x1b[32m[INFO]\x1b[0m All commands execute on your ChromeOS system.\r\n');
       } else {
-        this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Initializing WebVM backend...\r\n');
-        this.terminal.write('\x1b[33m[INFO]\x1b[0m Running in browser (limited commands)\r\n');
+        this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Running in browser mode (limited commands)\r\n');
+        this.terminal.write('\x1b[33m[INFO]\x1b[0m Start bridge server for full terminal access.\r\n');
       }
       
       // Set up output handler
@@ -723,11 +733,26 @@ class ClayWebTerminal {
 
     // Execute command
     if (this.isConnected && this.backend && this.backend.getConnected()) {
-      // Backend - commands are sent in real-time
+      // Backend - commands are sent in real-time via WebSocket
+      // This works for both bridge (real system) and WebWorker (limited)
       this.backend.sendInput(command + '\r\n');
+      
+      // For bridge, commands are executed in real-time via PTY
+      // For WebWorker, commands are handled by the worker
+      // No need to call executeViaREST - real-time is better
     } else {
-      // Fallback to direct execution
-      await this.executeViaREST(command);
+      // Backend not connected - try to execute via REST as fallback
+      // But first, try to reconnect
+      if (!this.backend) {
+        await this.initializeBackend();
+      }
+      
+      if (this.backend && this.backend.getConnected()) {
+        this.backend.sendInput(command + '\r\n');
+      } else {
+        // Last resort: try REST execution
+        await this.executeViaREST(command);
+      }
     }
   }
 

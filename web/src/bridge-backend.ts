@@ -29,11 +29,21 @@ export class BridgeBackend {
 
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      
       try {
+        // Try connecting with timeout
+        timeout = setTimeout(() => {
+          if (!this.sessionId) {
+            this.ws?.close();
+            reject(new Error('Connection timeout'));
+          }
+        }, 5000);
+
         this.ws = new WebSocket(this.bridgeUrl);
 
         this.ws.onopen = () => {
-          console.log('Connected to Clay Terminal Bridge');
+          console.log('WebSocket opened, waiting for session...');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           // Connection will be confirmed via handleMessage
@@ -45,6 +55,7 @@ export class BridgeBackend {
             
             switch (data.type) {
               case 'connected':
+                if (timeout) clearTimeout(timeout);
                 this.sessionId = data.sessionId;
                 if (this.onOutputCallback) {
                   this.onOutputCallback(`\x1b[32m[Connected]\x1b[0m Bridge: ${data.shell}\r\n`);
