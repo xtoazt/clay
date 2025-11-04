@@ -14,7 +14,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false
+    "noEmit": false,
+    "declarationDir": "./dist"
   },
   "include": ["package/**/*"],
   "exclude": ["node_modules", "dist", "web"]

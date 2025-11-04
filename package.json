@@ -18,7 +18,7 @@
   "scripts": {
     "build": "npm run build:web && npm run build:package",
     "build:web": "cd web && npm install && npm run build",
-    "build:package": "tsc -p tsconfig.package.json && vite build --config vite.package.config.ts && (test -f dist/index.d.ts && cp dist/index.d.ts dist/clay-util.d.ts || echo 'No index.d.ts found')",
+    "build:package": "tsc -p tsconfig.package.json && vite build --config vite.package.config.ts",
     "build:electron": "tsc && npm run copy-files",
     "build:backend": "cd backend && npm install",
     "build:all": "npm run build:backend && npm run build:web",
