@@ -1589,15 +1589,56 @@ class UIBuilder {
   }
 }
 
-// New Landing + Terminal router using daisyUI
+// New Landing + Terminal router using Tailwind CSS
 initializeHTML();
 
-function getDaisyThemes(): string[] {
-  return ['light','dark','cupcake','bumblebee','emerald','corporate','synthwave','retro','cyberpunk','valentine','halloween','garden','forest','aqua','lofi','pastel','fantasy','wireframe','black','luxury','dracula','cmyk','autumn','business','acid','lemonade','night','coffee','winter','dim','nord','sunset','caramellatte','abyss','silk'];
+function toggleDarkMode() {
+  document.documentElement.classList.toggle('dark');
+  const isDark = document.documentElement.classList.contains('dark');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  updateAllThemeIcons();
 }
 
-function applyTheme(theme: string) {
-  document.documentElement.setAttribute('data-theme', theme);
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const shouldBeDark = saved === 'dark' || (!saved && prefersDark);
+  
+  if (shouldBeDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
+function updateAllThemeIcons() {
+  const isDark = document.documentElement.classList.contains('dark');
+  
+  // Landing page icons
+  const sunIcon = document.getElementById('sun-icon');
+  const moonIcon = document.getElementById('moon-icon');
+  if (sunIcon && moonIcon) {
+    if (isDark) {
+      sunIcon.classList.add('hidden');
+      moonIcon.classList.remove('hidden');
+    } else {
+      sunIcon.classList.remove('hidden');
+      moonIcon.classList.add('hidden');
+    }
+  }
+  
+  // Terminal page icons
+  const sunIconTerminal = document.getElementById('sun-icon-terminal');
+  const moonIconTerminal = document.getElementById('moon-icon-terminal');
+  if (sunIconTerminal && moonIconTerminal) {
+    if (isDark) {
+      sunIconTerminal.classList.add('hidden');
+      moonIconTerminal.classList.remove('hidden');
+    } else {
+      sunIconTerminal.classList.remove('hidden');
+      moonIconTerminal.classList.add('hidden');
+    }
+  }
 }
 
 let deferredPrompt: any = null;
@@ -1641,10 +1682,13 @@ function showInstallSuccess() {
   if (!root) return;
   
   const toast = document.createElement('div');
-  toast.className = 'toast toast-top toast-end';
+  toast.className = 'fixed top-4 right-4 z-50';
   toast.innerHTML = `
-    <div class="alert alert-success">
-      <span>✓ Clay Terminal installed successfully!</span>
+    <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+      <span>Clay Terminal installed successfully!</span>
     </div>
   `;
   root.appendChild(toast);
@@ -1658,60 +1702,84 @@ function renderLanding(): void {
   const root = document.getElementById('app-root')!;
   root.innerHTML = '';
   const wrapper = document.createElement('div');
-  wrapper.className = 'min-h-screen flex flex-col bg-base-100';
+  wrapper.className = 'min-h-screen flex flex-col bg-white dark:bg-gray-900';
 
-  const navbar = document.createElement('div');
-  navbar.className = 'navbar bg-base-200 px-4';
+  const navbar = document.createElement('nav');
+  navbar.className = 'bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4';
   navbar.innerHTML = `
-    <div class="flex-1">
-      <a class="btn btn-ghost text-xl">Clay</a>
-    </div>
-    <div class="flex-none gap-2">
-      <button id="install-pwa-btn" class="btn btn-primary btn-sm" style="display: none;">
-        Install App
-      </button>
-      <select id="theme-select" class="select select-bordered select-sm">
-        ${getDaisyThemes().map(t => `<option value="${t}">${t}</option>`).join('')}
-      </select>
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Clay</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="install-pwa-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors" style="display: none;">
+          Install App
+        </button>
+        <button id="theme-toggle" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+          <svg id="sun-icon" class="w-5 h-5 text-gray-900 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+          </svg>
+          <svg id="moon-icon" class="w-5 h-5 text-gray-100 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+        </button>
+      </div>
     </div>
   `;
 
   const hero = document.createElement('div');
-  hero.className = 'hero py-10';
+  hero.className = 'flex-1 flex items-center justify-center px-6 py-20 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900';
   hero.innerHTML = `
-    <div class="hero-content text-center">
-      <div class="max-w-2xl">
-        <h1 class="text-5xl font-bold">A professional terminal for the web</h1>
-        <p class="py-6 text-base-content/70">Clay gives you a powerful, AI-augmented terminal experience right in your browser or Electron app. Install on ChromeOS for offline access.</p>
-        <div class="flex gap-3 justify-center flex-wrap">
-          <button id="open-terminal" class="btn btn-primary">Open Terminal</button>
-          <a href="https://www.npmjs.com/package/clay-util" target="_blank" class="btn btn-outline">Documentation</a>
-          <button id="install-pwa-btn-hero" class="btn btn-accent" style="display: none;">
-            📱 Install App
-          </button>
-        </div>
+    <div class="text-center max-w-4xl mx-auto">
+      <h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
+        A professional terminal for the web
+      </h1>
+      <p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+        Clay gives you a powerful, AI-augmented terminal experience right in your browser or Electron app. Install on ChromeOS for offline access.
+      </p>
+      <div class="flex gap-4 justify-center flex-wrap">
+        <button id="open-terminal" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+          Open Terminal
+        </button>
+        <a href="https://www.npmjs.com/package/clay-util" target="_blank" class="px-6 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-900 dark:text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all">
+          Documentation
+        </a>
+        <button id="install-pwa-btn-hero" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105" style="display: none;">
+          📱 Install App
+        </button>
       </div>
     </div>
   `;
 
   const dashboard = document.createElement('div');
-  dashboard.className = 'px-6 pb-10';
+  dashboard.className = 'px-6 py-12 bg-gray-50 dark:bg-gray-800';
   dashboard.innerHTML = `
-    <div class="grid gap-6 md:grid-cols-3">
-      <div class="card bg-base-200 shadow">
-        <div class="card-body">
-          <h2 class="card-title">Now</h2>
-          <div id="clock" class="text-3xl font-semibold"></div>
-          <div id="date" class="opacity-70"></div>
+    <div class="max-w-7xl mx-auto">
+      <div class="grid gap-6 md:grid-cols-3">
+        <div class="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-600">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Now</h2>
+          <div id="clock" class="text-4xl font-bold text-gray-900 dark:text-white mb-2"></div>
+          <div id="date" class="text-sm text-gray-600 dark:text-gray-400"></div>
         </div>
-      </div>
-      <div class="card bg-base-200 shadow md:col-span-2">
-        <div class="card-body">
-          <h2 class="card-title">Updates</h2>
-          <ul class="list-disc ml-5 space-y-1" id="updates-list">
-            <li>New daisyUI-based UI shell</li>
-            <li>Theme switcher with 30+ themes</li>
-            <li>Terminal route moved to #terminal</li>
+        <div class="bg-white dark:bg-gray-700 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-600 md:col-span-2">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Updates</h2>
+          <ul class="space-y-2 text-gray-700 dark:text-gray-300" id="updates-list">
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-1">•</span>
+              <span>New Tailwind CSS-based UI</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-1">•</span>
+              <span>Dark mode support</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-1">•</span>
+              <span>PWA installation for ChromeOS</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-blue-500 mt-1">•</span>
+              <span>Terminal route moved to #terminal</span>
+            </li>
           </ul>
         </div>
       </div>
@@ -1723,9 +1791,37 @@ function renderLanding(): void {
   wrapper.appendChild(dashboard);
   root.appendChild(wrapper);
 
-  const themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
-  themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
-  applyTheme(themeSelect.value);
+  // Theme toggle
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', toggleDarkMode);
+  }
+  
+  // Update theme icons
+  function updateThemeIcons() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const sunIcon = document.getElementById('sun-icon');
+    const moonIcon = document.getElementById('moon-icon');
+    if (sunIcon && moonIcon) {
+      if (isDark) {
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+    }
+  }
+  
+  updateThemeIcons();
+  
+  // Also update on theme toggle
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      setTimeout(updateThemeIcons, 10);
+    });
+  }
 
   const openBtn = document.getElementById('open-terminal') as HTMLButtonElement;
   openBtn.addEventListener('click', () => {
@@ -1791,27 +1887,62 @@ function renderTerminalView(): void {
   const root = document.getElementById('app-root')!;
   root.innerHTML = '';
   const layout = document.createElement('div');
-  layout.className = 'min-h-screen flex flex-col bg-base-100';
+  layout.className = 'min-h-screen flex flex-col bg-white dark:bg-gray-900';
   layout.innerHTML = `
-    <div class="navbar bg-base-200 px-4">
-      <div class="flex-1">
-        <button id="back-home" class="btn btn-ghost">← Dashboard</button>
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div class="flex items-center justify-between max-w-full">
+        <button id="back-home" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+          Dashboard
+        </button>
+        <button id="theme-toggle-terminal" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+          <svg id="sun-icon-terminal" class="w-5 h-5 text-gray-900 dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+          </svg>
+          <svg id="moon-icon-terminal" class="w-5 h-5 text-gray-100 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+        </button>
       </div>
-      <div class="flex-none">
-        <select id="theme-select" class="select select-bordered select-sm">
-          ${getDaisyThemes().map(t => `<option value="${t}">${t}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div class="flex-1">
-      <div id="terminal" class="w-full h-full"></div>
+    </nav>
+    <div class="flex-1 overflow-hidden">
+      <div id="terminal" class="w-full h-full bg-black"></div>
     </div>
   `;
   root.appendChild(layout);
 
-  const themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
-  themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
-  applyTheme(themeSelect.value);
+  const themeToggle = document.getElementById('theme-toggle-terminal');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', toggleDarkMode);
+  }
+  
+  // Update theme icons
+  function updateThemeIcons() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const sunIcon = document.getElementById('sun-icon-terminal');
+    const moonIcon = document.getElementById('moon-icon-terminal');
+    if (sunIcon && moonIcon) {
+      if (isDark) {
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+    }
+  }
+  
+  updateThemeIcons();
+  
+  // Also update on theme toggle
+  const themeToggleBtnTerminal = document.getElementById('theme-toggle-terminal');
+  if (themeToggleBtnTerminal) {
+    themeToggleBtnTerminal.addEventListener('click', () => {
+      setTimeout(updateThemeIcons, 10);
+    });
+  }
 
   const back = document.getElementById('back-home') as HTMLButtonElement;
   back.addEventListener('click', () => {
@@ -1830,6 +1961,7 @@ function renderTerminalView(): void {
 }
 
 function route() {
+  initTheme();
   if (location.hash === '#terminal') {
     renderTerminalView();
   } else {
