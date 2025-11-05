@@ -1658,6 +1658,82 @@ echo $! > /tmp/clay-bridge.pid
     this.switchTab(this.tabs[prevIndex].id);
   }
 
+  private setupScanButton(): void {
+    const scanBtn = document.getElementById('scan-filesystem-btn');
+    const scanText = document.getElementById('scan-filesystem-text');
+    
+    if (scanBtn) {
+      scanBtn.addEventListener('click', async () => {
+        if (this.isScanning) {
+          notificationManager.warning('Scan already in progress');
+          return;
+        }
+        
+        await this.scanFilesystem();
+      });
+    }
+  }
+
+  private async scanFilesystem(): Promise<void> {
+    if (this.isScanning) return;
+    
+    this.isScanning = true;
+    const scanBtn = document.getElementById('scan-filesystem-btn');
+    const scanText = document.getElementById('scan-filesystem-text');
+    
+    if (scanText) scanText.textContent = 'Scanning...';
+    if (scanBtn) scanBtn.setAttribute('disabled', 'true');
+    
+    this.terminal.write(`\r\n\x1b[36m[SCAN]\x1b[0m Starting filesystem scan...\r\n`);
+    notificationManager.info('Scanning filesystem... This may take a moment.');
+    
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/filesystem/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: '/',
+          maxDepth: 10,
+          excludePaths: ['/proc', '/sys', '/dev', '/run', '/tmp']
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        this.filesystemContext = data;
+        this.terminal.write(`\x1b[32m[SCAN]\x1b[0m Scan complete: ${data.totalFiles} files, ${data.totalDirectories} directories, ${this.formatBytes(data.totalSize)} total\r\n`);
+        this.terminal.write(`\x1b[33m[INFO]\x1b[0m Filesystem context is now available for AI discussions\r\n`);
+        notificationManager.success(`Filesystem scanned: ${data.totalFiles} files, ${this.formatBytes(data.totalSize)}`);
+        this.writePrompt();
+      } else {
+        throw new Error(data.error || 'Scan failed');
+      }
+    } catch (error: any) {
+      this.terminal.write(`\r\n\x1b[31m[SCAN ERROR]\x1b[0m ${error.message}\r\n`);
+      notificationManager.error(`Scan failed: ${error.message}`);
+      this.writePrompt();
+    } finally {
+      this.isScanning = false;
+      if (scanText) scanText.textContent = 'Scan Files';
+      if (scanBtn) scanBtn.removeAttribute('disabled');
+    }
+  }
+
+  private setupSettingsUnlocker(): void {
+    // Add command to open settings unlocker
+    commandPalette.register({
+      id: 'chromeos-settings',
+      label: 'ChromeOS Settings',
+      description: 'Open ChromeOS hidden settings unlocker',
+      shortcut: 'Ctrl+Shift+S',
+      category: 'System',
+      callback: () => {
+        settingsUnlockerUI.open();
+      }
+    });
+  }
+
   private async checkLinuxFilesAccess(): Promise<string | null> {
     // Check for ChromeOS Linux Files access
     const possiblePaths = [
@@ -2473,14 +2549,35 @@ echo $! > /tmp/clay-bridge.pid
     this.updateAIStatus('thinking');
     this.terminal.write(`\r\n\x1b[36m[AI]\x1b[0m Auto-fixing error...\r\n`);
     
+    if (!this.aiAssistant) {
+      this.terminal.write(`\x1b[31m[AI ERROR]\x1b[0m AI assistant not available\r\n`);
+      this.aiExecuting = false;
+      this.updateAIStatus('error');
+      return;
+    }
+
     try {
-      const fixCommand = await this.aiAssistant.quickFix(this.lastError.command, this.lastError.output);
-      if (fixCommand) {
-        this.terminal.write(`\x1b[33m[AI]\x1b[0m Executing fix: ${fixCommand}\r\n`);
+      // Generate fix command using AI chat instead of quickFix
+      const fixPrompt = `The command "${this.lastError.command}" failed with error:\n${this.lastError.output}\n\nProvide a command to fix this error. Only output the command, no explanations.`;
+      const messages = [
+        { role: 'user' as const, content: fixPrompt }
+      ];
+      
+      let fixCommand = '';
+      await this.aiAssistant.chat(messages, (text) => {
+        fixCommand = text;
+      });
+      
+      // Extract command from response (may be in code blocks)
+      const commandMatch = fixCommand.match(/```[\s\S]*?```|`([^`]+)`|([^\n]+)/);
+      const extractedCommand = commandMatch ? (commandMatch[1] || commandMatch[2] || commandMatch[0].replace(/```/g, '').trim()) : fixCommand.trim();
+      
+      if (extractedCommand && extractedCommand.length > 0) {
+        this.terminal.write(`\x1b[33m[AI]\x1b[0m Executing fix: ${extractedCommand}\r\n`);
         if (this.backend && this.backend.getConnected()) {
-          this.backend.sendInput(fixCommand + '\r\n');
+          this.backend.sendInput(extractedCommand + '\r\n');
         } else {
-          await this.executeViaREST(fixCommand);
+          await this.executeCommand(extractedCommand);
         }
       }
     } catch (error: any) {
@@ -2503,15 +2600,37 @@ echo $! > /tmp/clay-bridge.pid
     this.updateAIStatus('thinking');
     this.terminal.write(`\r\n\x1b[36m[AI]\x1b[0m Diagnosing error...\r\n`);
     
+    if (!this.aiAssistant) {
+      this.terminal.write(`\x1b[31m[AI ERROR]\x1b[0m AI assistant not available\r\n`);
+      this.writePrompt();
+      return;
+    }
+
     try {
-      const fixCommand = await this.aiAssistant.quickFix(this.lastError.command, this.lastError.output);
-      if (fixCommand) {
-        this.terminal.write(`\x1b[33m[AI]\x1b[0m Executing fix: ${fixCommand}\r\n`);
+      // Generate fix command using AI chat instead of quickFix
+      const fixPrompt = `The command "${this.lastError.command}" failed with error:\n${this.lastError.output}\n\nProvide a command to fix this error. Only output the command, no explanations.`;
+      const messages = [
+        { role: 'user' as const, content: fixPrompt }
+      ];
+      
+      let fixCommand = '';
+      await this.aiAssistant.chat(messages, (text) => {
+        fixCommand = text;
+      });
+      
+      // Extract command from response (may be in code blocks)
+      const commandMatch = fixCommand.match(/```[\s\S]*?```|`([^`]+)`|([^\n]+)/);
+      const extractedCommand = commandMatch ? (commandMatch[1] || commandMatch[2] || commandMatch[0].replace(/```/g, '').trim()) : fixCommand.trim();
+      
+      if (extractedCommand && extractedCommand.length > 0) {
+        this.terminal.write(`\x1b[33m[AI]\x1b[0m Executing fix: ${extractedCommand}\r\n`);
         if (this.backend && this.backend.getConnected()) {
-          this.backend.sendInput(fixCommand + '\r\n');
+          this.backend.sendInput(extractedCommand + '\r\n');
         } else {
-          await this.executeViaREST(fixCommand);
+          await this.executeCommand(extractedCommand);
         }
+      } else {
+        this.terminal.write(`\x1b[33m[AI]\x1b[0m Could not generate fix command\r\n`);
       }
     } catch (error: any) {
       this.terminal.write(`\x1b[31m[AI ERROR]\x1b[0m ${error.message}\r\n`);
