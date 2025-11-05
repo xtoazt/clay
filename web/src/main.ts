@@ -1013,11 +1013,24 @@ echo $! > /tmp/clay-bridge.pid
   private initializeTerminal(): void {
     const terminalElement = document.getElementById('terminal');
     if (!terminalElement) {
-      throw new Error('Terminal element not found');
+      console.warn('Terminal element not found, retrying...');
+      setTimeout(() => {
+        const retryElement = document.getElementById('terminal');
+        if (retryElement) {
+          this.terminal.open(retryElement);
+          this.setupTerminalAfterOpen();
+        } else {
+          console.error('Terminal element still not found after retry');
+        }
+      }, 200);
+      return;
     }
 
-    this.terminal.open(terminalElement);
-    
+    this.terminal.open(document.getElementById('terminal')!);
+    this.setupTerminalAfterOpen();
+  }
+
+  private setupTerminalAfterOpen(): void {
     // Initial fit with a small delay to ensure proper rendering
     setTimeout(() => {
       this.fitAddon.fit();
@@ -1148,29 +1161,32 @@ echo $! > /tmp/clay-bridge.pid
     });
 
     // Right-click context menu for copy
-    terminalElement.addEventListener('contextmenu', (e: MouseEvent) => {
-      e.preventDefault();
-      const selection = this.terminal.getSelection();
-      if (selection && selection.length > 0) {
-        navigator.clipboard.writeText(selection).then(() => {
-          notificationManager.success(`Copied ${selection.length} character${selection.length !== 1 ? 's' : ''} to clipboard`);
-        }).catch(() => {
-          notificationManager.error('Failed to copy to clipboard');
-        });
-      }
-    });
+    const terminalElement = document.getElementById('terminal');
+    if (terminalElement) {
+      terminalElement.addEventListener('contextmenu', (e: MouseEvent) => {
+        e.preventDefault();
+        const selection = this.terminal.getSelection();
+        if (selection && selection.length > 0) {
+          navigator.clipboard.writeText(selection).then(() => {
+            notificationManager.success(`Copied ${selection.length} character${selection.length !== 1 ? 's' : ''} to clipboard`);
+          }).catch(() => {
+            notificationManager.error('Failed to copy to clipboard');
+          });
+        }
+      });
 
-    // Double-click to select word and copy
-    terminalElement.addEventListener('dblclick', () => {
-      const selection = this.terminal.getSelection();
-      if (selection && selection.length > 0) {
-        navigator.clipboard.writeText(selection).then(() => {
-          notificationManager.success(`Copied ${selection.length} character${selection.length !== 1 ? 's' : ''} to clipboard`);
-        }).catch(() => {
-          notificationManager.error('Failed to copy to clipboard');
-        });
-      }
-    });
+      // Double-click to select word and copy
+      terminalElement.addEventListener('dblclick', () => {
+        const selection = this.terminal.getSelection();
+        if (selection && selection.length > 0) {
+          navigator.clipboard.writeText(selection).then(() => {
+            notificationManager.success(`Copied ${selection.length} character${selection.length !== 1 ? 's' : ''} to clipboard`);
+          }).catch(() => {
+            notificationManager.error('Failed to copy to clipboard');
+          });
+        }
+      });
+    }
 
     this.printWelcomeMessage();
     this.createTerminalSearchUI();
@@ -3704,8 +3720,8 @@ function renderTerminalView(): void {
   const layout = document.createElement('div');
   layout.className = 'min-h-screen flex flex-col bg-gray-950';
   layout.innerHTML = `
-    <!-- Enhanced Status Bar with Glassmorphism -->
-    <div id="status-bar" class="glass px-4 py-2.5 animate-fade-in">
+    <!-- Enhanced Status Bar with Modern Glassmorphism -->
+    <div id="status-bar" class="glass px-6 py-3.5 animate-fade-in relative z-20">
       <div class="flex items-center justify-between gap-4">
         <div class="flex items-center gap-4 flex-wrap">
           <!-- Back Button -->
@@ -3784,9 +3800,10 @@ function renderTerminalView(): void {
       </div>
     </div>
     
-    <!-- Enhanced Terminal Container with Glassmorphism -->
-    <div class="flex-1 overflow-hidden p-4">
-      <div id="terminal" class="w-full h-full glass rounded-xl shadow-2xl animate-fade-in"></div>
+    <!-- Enhanced Terminal Container with Modern Glassmorphism -->
+    <div class="flex-1 overflow-hidden p-6 relative">
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 rounded-3xl blur-3xl"></div>
+      <div id="terminal" class="w-full h-full glass rounded-2xl shadow-2xl animate-fade-in relative z-10"></div>
     </div>
   `;
   root.appendChild(layout);
@@ -3831,11 +3848,22 @@ function renderTerminalView(): void {
   // Initialize terminal into #terminal
   setTimeout(() => {
     try {
-      new (ClayWebTerminal as any)();
+      const terminalElement = document.getElementById('terminal');
+      if (terminalElement) {
+        new ClayWebTerminal();
+      } else {
+        console.error('Terminal element not found');
+        setTimeout(() => {
+          const retryElement = document.getElementById('terminal');
+          if (retryElement) {
+            new ClayWebTerminal();
+          }
+        }, 200);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to initialize terminal:', e);
     }
-  }, 50);
+  }, 100);
 }
 
 function route() {
