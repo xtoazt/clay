@@ -44,8 +44,11 @@ class TabBar {
     
     // Insert before terminal container
     const terminalElement = document.getElementById('terminal');
-    if (terminalElement && terminalElement.parentElement) {
-      terminalElement.parentElement.insertBefore(this.container, terminalElement);
+    if (terminalElement && terminalElement.parentElement && this.container) {
+      // Ensure container is a valid Node before inserting
+      if (this.container instanceof Node) {
+        terminalElement.parentElement.insertBefore(this.container, terminalElement);
+      }
     }
   }
 

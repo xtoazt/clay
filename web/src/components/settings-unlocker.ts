@@ -376,6 +376,11 @@ class SettingsUnlockerUI {
     try {
       // Fetch available settings from backend
       const response = await fetch('http://127.0.0.1:8765/api/chromeos/settings/list');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.settings) {
@@ -385,11 +390,17 @@ class SettingsUnlockerUI {
         this.settings = this.getDefaultSettings();
       }
 
-      // Fetch current status
-      await this.refreshStatus();
+      // Fetch current status (silently fail if bridge not available)
+      try {
+        await this.refreshStatus();
+      } catch (statusError) {
+        console.warn('Could not refresh settings status (bridge not available):', statusError);
+      }
+      
       this.render();
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      // Bridge not available - use default settings
+      console.warn('Bridge not available, using default settings:', error);
       this.settings = this.getDefaultSettings();
       this.render();
     }

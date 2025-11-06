@@ -63,16 +63,53 @@ export class WebLLMService {
       console.log('[WebLLM] Initializing JOSIEFIED model...');
       
       // Build model identifier with quantization
-      // Note: WebLLM may need a specific model format
-      // For now, we'll use a compatible model format
-      const modelId = `Qwen/Qwen2.5-0.5B-Instruct-q${this.config.quantization?.replace('f', '') || '4'}`;
+      // WebLLM uses specific model IDs - we'll use a compatible Qwen model
+      // The quantization format should match WebLLM's expected format
+      let modelId: string;
+      const quant = this.config.quantization || 'q4f16_1';
       
-      // Initialize WebLLM engine
-      this.engine = await CreateMLCEngine(modelId, {
-        initProgressCallback: (report) => {
-          console.log('[WebLLM] Progress:', report);
+      // Map our quantization to WebLLM model IDs
+      // WebLLM uses format like: Qwen/Qwen2.5-0.5B-Instruct-q4f16_1
+      // But we need to check available models - use a simpler fallback
+      switch (quant) {
+        case 'q4f16_1':
+          modelId = 'Qwen/Qwen2.5-0.5B-Instruct-q4f16_1';
+          break;
+        case 'q4f32_1':
+          modelId = 'Qwen/Qwen2.5-0.5B-Instruct-q4f32_1';
+          break;
+        case 'q8f16_1':
+          modelId = 'Qwen/Qwen2.5-0.5B-Instruct-q8f16_1';
+          break;
+        case 'f16':
+          modelId = 'Qwen/Qwen2.5-0.5B-Instruct-f16';
+          break;
+        default:
+          modelId = 'Qwen/Qwen2.5-0.5B-Instruct-q4f16_1';
+      }
+      
+      // Try to initialize with the model ID
+      // If it fails, log a warning and continue without AI
+      try {
+        this.engine = await CreateMLCEngine(modelId, {
+          initProgressCallback: (report) => {
+            console.log('[WebLLM] Progress:', report);
+          }
+        });
+      } catch (modelError: any) {
+        // If model not found, try with a simpler model ID or disable AI
+        if (modelError.message?.includes('Cannot find model') || modelError.message?.includes('model record')) {
+          console.warn(`[WebLLM] Model ${modelId} not found in WebLLM registry.`);
+          console.warn(`[WebLLM] Available models must be listed in WebLLM's model_list.json`);
+          console.warn(`[WebLLM] AI features will be disabled. To enable AI, ensure WebLLM models are properly configured.`);
+          // Don't throw - allow app to continue without AI
+          this.isInitialized = false;
+          this.isInitializing = false;
+          return; // Exit gracefully without AI
+        } else {
+          throw modelError;
         }
-      });
+      }
 
       this.isInitialized = true;
       this.isInitializing = false;

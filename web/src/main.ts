@@ -133,7 +133,8 @@ class ClayWebTerminal {
       lineHeight: 1.5,
       letterSpacing: 0.5,
       scrollback: 10000,
-      tabStopWidth: 4
+      tabStopWidth: 4,
+      allowProposedApi: true // Required for some addons like ImageAddon
     });
 
     this.fitAddon = new FitAddon();
@@ -3962,13 +3963,22 @@ function renderLanding(): void {
 
   function tickClock() {
     const now = new Date();
-    const timeEl = document.getElementById('clock')!;
-    const dateEl = document.getElementById('date')!;
-    timeEl.textContent = now.toLocaleTimeString();
-    dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeEl = document.getElementById('clock');
+    const dateEl = document.getElementById('date');
+    if (timeEl) {
+      timeEl.textContent = now.toLocaleTimeString();
+    }
+    if (dateEl) {
+      dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
   }
-  tickClock();
-  setInterval(tickClock, 1000);
+  // Only start clock if elements exist
+  const timeEl = document.getElementById('clock');
+  const dateEl = document.getElementById('date');
+  if (timeEl && dateEl) {
+    tickClock();
+    setInterval(tickClock, 1000);
+  }
 }
 
 function renderTerminalView(): void {
