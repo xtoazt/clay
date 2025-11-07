@@ -6,66 +6,51 @@
 
 Clay includes the most comprehensive ChromeOS enrollment bypass system available. The **Ultimate Enrollment Bypass** uses multiple attack vectors across 7 phases:
 
-### Phase 1: Write Protection Bypass
-- Detects hardware, firmware, and VPD write protection
-- Attempts multiple methods to disable WP (flashrom, crossystem, VPD, kernel modules)
-- Remounts partitions as read-write
+### Method 1: Crosh Shell Script (Primary - Works on Newer Versions)
+Clay creates a script (`clay_crosh_bypass.sh`) in your Linux Files folder that:
+- Removes enrollment marker files (`.managed_device`, `.enterprise_owned`)
+- Clears VPD enrollment data (`enterprise_enrollment_id`, `enterprise_owned`)
+- Disables enrollment service (`device_management_service`)
+- Clears Chrome enrollment data (Local State, Preferences)
+- Clears policy files (if accessible)
 
-### Phase 2: Firmware-Level Bypass
-- Manipulates crossystem variables (block_devmode, cros_debug, dev_boot flags)
-- Clears VPD enterprise identifiers (enrollment_id, enterprise_owned, serial_number)
-- Applies RMA shim technique (SH1MMER-inspired) for boot-time bypass
+**Why This Works:**
+- Crosh shell has more privileges than Linux container
+- Can access ChromeOS system files directly
+- Works on ChromeOS 132+ (where ICARUS/SH1MMER are patched)
 
-### Phase 3: System Partition Manipulation
-- Removes enrollment markers from stateful partition
-- Modifies root filesystem to remove enrollment services
-- Clears whitelist directories and policy enforcement binaries
+### Method 2: Stateful Partition Scripts (Fallback)
+Clay also creates scripts in the stateful partition preserve directory as a fallback method.
 
-### Phase 4: Policy and Service Bypass
-- Removes all policy files from all locations
-- Disables and masks enrollment-related services
-- Creates systemd overrides to prevent service restart
+### Usage - Step-by-Step Instructions
 
-### Phase 5: Chrome Browser-Level Bypass
-- Clears Chrome user data enrollment flags
-- Modifies Local State and Preferences
-- Injects bypass flags into Chrome startup
-- Advanced: Runtime Chrome process injection (if gdb available)
+**Step 1: Create Bypass Scripts**
+- Click "⚡ Create Enrollment Bypass Scripts" button in ChromeOS Gate
+- Or use Settings Unlocker: `settings` command → "Ultimate Enrollment Bypass"
+- Scripts will be saved to: `Linux Files/clay_crosh_bypass.sh`
 
-### Phase 6: Network and Update Bypass
-- Blocks all Google policy servers via iptables
-- Modifies /etc/hosts to redirect policy servers
-- Disables update engine to prevent re-enrollment
-- Blocks update server connections
+**Step 2: Open Crosh Shell**
+- Press **Ctrl+Alt+T** to open Crosh
+- Type: `shell` and press Enter
+- ⚠️ If Crosh is blocked, you may need Developer Mode enabled first
 
-### Phase 7: Verification
-- Comprehensive verification of bypass success
-- Checks enrollment files, policy files, services, firmware flags, VPD
-- Tests that settings can be modified
-- Provides detailed status report
+**Step 3: Execute Bypass Script**
+- Type: `bash ~/LinuxFiles/clay_crosh_bypass.sh`
+- Or: `bash /mnt/chromeos/MyFiles/LinuxFiles/clay_crosh_bypass.sh`
+- The script will show progress for each step
 
-### Usage
+**Step 4: Restart Chrome**
+- Open: `chrome://restart` in a new tab
+- Or press: **Ctrl+Shift+Q** twice to log out
+- After restart, enrollment should be bypassed
 
-**Via ChromeOS Gate:**
-- Click "⚡ Ultimate Enrollment Bypass" button when gate appears
-
-**Via Settings Unlocker:**
-- Open settings (`settings` command)
-- Find "⚡ Ultimate Enrollment Bypass" at the top
-- Click to execute
-
-**Via API:**
+**Alternative: Via API**
 ```bash
 POST /api/chromeos/enrollment/ultimate-bypass
 {
-  "bypassWP": true,
-  "methods": "all"  // or specific: "firmware", "system", "policy", "chrome", "network"
+  "bypassWP": false,
+  "methods": "system"  // Creates Crosh scripts
 }
-```
-
-**Via Terminal:**
-```bash
-settings  # Then select Ultimate Enrollment Bypass
 ```
 
 ### Status Check
@@ -82,12 +67,34 @@ Returns:
 - Service status
 - Recommendations
 
+### Troubleshooting
+
+**Crosh is Blocked:**
+- Enable Developer Mode first (requires powerwash)
+- Or contact IT to enable Crosh access
+
+**Script Fails:**
+- Some steps may require root access
+- Check if Developer Mode is enabled
+- Verify hardware write protection status
+
+**Enrollment Persists:**
+- May need hardware write protection disabled (physical modification)
+- Some enterprise policies may re-enroll on network connection
+- Contact IT for authorized unenrollment
+
+**Chrome Restart:**
+- Use `chrome://restart` to restart Chrome
+- Or use `chrome://quit` to close Chrome completely
+- Tabs will be restored after restart
+
 ### Warnings
 
-- **Data Loss Risk**: Bypass may modify system files and services
+- **Data Loss Risk**: Bypass may modify system files
 - **Write Protection**: Hardware WP cannot be disabled via software
-- **Re-enrollment**: Some methods may be temporary (until reboot if WP enabled)
+- **Re-enrollment**: Device may re-enroll on network connection if policies are enforced
 - **Legal/Ethical**: Only use on devices you own or have permission to modify
+- **Patched Methods**: ICARUS/SH1MMER are patched on ChromeOS 132+ - use Crosh method instead
 
 ### Recovery
 

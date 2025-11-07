@@ -2481,6 +2481,7 @@ echo $! > /tmp/clay-bridge.pid
       this.terminal.write(`  \x1b[32mscan\x1b[0m                 - Scan filesystem for AI context\r\n`);
       if (this.isChromeOS) {
         this.terminal.write(`  \x1b[32msettings\x1b[0m             - Open ChromeOS hidden settings unlocker\r\n`);
+        this.terminal.write(`  \x1b[32mbypass-enrollment\x1b[0m    - Execute enrollment bypass via Clay Terminal\r\n`);
       }
       this.terminal.write(`\r\n`);
       
@@ -2636,6 +2637,67 @@ echo $! > /tmp/clay-bridge.pid
 
     if (command === 'scan' || command === 'scan-filesystem') {
       await this.scanFilesystem();
+      this.writePrompt();
+      return;
+    }
+
+    if (command === 'bypass-enrollment' || command === 'bypass-enroll') {
+      if (!this.isChromeOS) {
+        this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Enrollment bypass is only available on ChromeOS devices.\r\n');
+        this.writePrompt();
+        return;
+      }
+
+      this.terminal.write('\r\n\x1b[36m[Enrollment Bypass]\x1b[0m Creating bypass script and executing via Clay Terminal...\r\n');
+      
+      try {
+        // First, create the bypass script via API
+        const createResponse = await fetch('http://127.0.0.1:8765/api/chromeos/enrollment/ultimate-bypass', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bypassWP: false, methods: 'system' })
+        });
+
+        if (!createResponse.ok) {
+          throw new Error('Failed to create bypass script. Make sure bridge server is running.');
+        }
+
+        const createData = await createResponse.json();
+        const scriptPath = createData.scriptPath || createData.saveLocation || 'Linux Files/clay_terminal_bypass.sh';
+        this.terminal.write(`\x1b[32m[✓]\x1b[0m Bypass script created: ${scriptPath}\r\n`);
+        
+        // Check if Linux Files exists
+        if (!createData.hasLinuxFiles) {
+          this.terminal.write(`\x1b[33m[⚠️]\x1b[0m Linux Files folder not found - script saved to alternative location\r\n`);
+          this.terminal.write(`\x1b[36m[💡]\x1b[0m To create Linux Files folder:\r\n`);
+          this.terminal.write(`\x1b[36m    1. Open: chrome://crostini-installer\r\n`);
+          this.terminal.write(`\x1b[36m    2. Click the blue "Install" button (even if Linux is blocked)\r\n`);
+          this.terminal.write(`\x1b[36m    3. This will create the Linux Files folder in your Files app\r\n`);
+          this.terminal.write(`\x1b[36m    4. You don't need to complete installation - just click the button!\r\n\r\n`);
+        }
+
+        // Now execute the script via bridge
+        if (this.isConnected && this.backend && this.backend.getConnected()) {
+          this.terminal.write(`\x1b[36m[Executing]\x1b[0m Running bypass script via bridge...\r\n`);
+          
+          // Execute the script using the actual path
+          const executeCommand = `bash ${scriptPath}`;
+          
+          // Send command to bridge
+          this.backend.sendInput(executeCommand + '\r\n');
+          
+          this.terminal.write(`\x1b[33m[Note]\x1b[0m After script completes, restart Chrome: chrome://restart\r\n`);
+        } else {
+          // Bridge not connected - provide manual instructions
+          this.terminal.write(`\x1b[33m[Manual]\x1b[0m Bridge not connected. Execute manually:\r\n`);
+          this.terminal.write(`\x1b[36m  bash ${scriptPath}\x1b[0m\r\n`);
+          this.terminal.write(`\x1b[33m[Note]\x1b[0m Or start bridge server: cd bridge && npm start\r\n`);
+        }
+      } catch (error: any) {
+        this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
+        this.terminal.write(`\x1b[33m[INFO]\x1b[0m Make sure bridge server is running: cd bridge && npm start\r\n`);
+      }
+      
       this.writePrompt();
       return;
     }
@@ -4427,13 +4489,13 @@ function renderTerminalView(): void {
 async function route() {
   initTheme();
   
-  // Check ChromeOS gate before allowing access
+  // Show ChromeOS recommendation (non-blocking)
+  // Clay terminal and AI are always available
   if (typeof (window as any).chromeOSGate !== 'undefined') {
-    const blocked = await (window as any).chromeOSGate.checkAndBlock();
-    if (blocked) {
-      // Gate is showing, don't render anything else
-      return;
-    }
+    // Don't await - show recommendation asynchronously, don't block
+    (window as any).chromeOSGate.checkAndBlock().catch(() => {
+      // Silent fail - continue anyway
+    });
   }
   
   if (location.hash === '#terminal') {

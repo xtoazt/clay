@@ -53,19 +53,33 @@ function isChromeOS() {
           fs.readFileSync('/etc/lsb-release', 'utf8').includes('CHROMEOS'));
 }
 
-// Get ChromeOS Linux Files path
+// Get ChromeOS Linux Files path (or fallback location)
 function getLinuxFilesPath() {
   if (!isChromeOS()) return null;
   
   const possiblePaths = [
+    // Linux Files locations (preferred)
     '/mnt/chromeos/MyFiles/LinuxFiles',
     os.homedir() + '/LinuxFiles',
-    os.homedir() + '/MyFiles/LinuxFiles'
+    os.homedir() + '/MyFiles/LinuxFiles',
+    // Fallback: MyFiles root (always exists on ChromeOS)
+    '/mnt/chromeos/MyFiles',
+    os.homedir() + '/MyFiles',
+    // Fallback: Downloads folder (always accessible)
+    '/mnt/chromeos/MyFiles/Downloads',
+    os.homedir() + '/Downloads',
+    // Fallback: Home directory
+    os.homedir(),
+    // Last resort: /tmp (temporary but always writable)
+    '/tmp'
   ];
   
   for (const path of possiblePaths) {
     try {
       if (fs.existsSync(path) && fs.statSync(path).isDirectory()) {
+        return path;
+      } else if (path === '/tmp' || path === os.homedir()) {
+        // These always exist or can be created
         return path;
       }
     } catch (e) {
@@ -73,7 +87,31 @@ function getLinuxFilesPath() {
     }
   }
   
-  return null;
+  // Return Downloads as last resort (should always exist)
+  return '/mnt/chromeos/MyFiles/Downloads';
+}
+
+// Check if Linux Files exists
+function hasLinuxFiles() {
+  if (!isChromeOS()) return false;
+  
+  const linuxFilesPaths = [
+    '/mnt/chromeos/MyFiles/LinuxFiles',
+    os.homedir() + '/LinuxFiles',
+    os.homedir() + '/MyFiles/LinuxFiles'
+  ];
+  
+  for (const path of linuxFilesPaths) {
+    try {
+      if (fs.existsSync(path) && fs.statSync(path).isDirectory()) {
+        return true;
+      }
+    } catch (e) {
+      // Continue checking
+    }
+  }
+  
+  return false;
 }
 
 // Store active processes (PTY sessions or spawn processes)
@@ -746,9 +784,21 @@ app.post('/api/chromeos/enrollment/ultimate-bypass', async (req, res) => {
       methods
     });
     
+    // Get script path for terminal execution
+    const savePath = getLinuxFilesPath();
+    const scriptPath = savePath 
+      ? `${savePath}/clay_terminal_bypass.sh`
+      : '~/clay_terminal_bypass.sh';
+    
+    // Check if Linux Files exists
+    const hasLinuxFilesFolder = hasLinuxFiles();
+    
     res.json({
       success: results.overall !== false,
       results,
+      scriptPath,
+      hasLinuxFiles: hasLinuxFilesFolder,
+      saveLocation: savePath,
       message: results.overall 
         ? 'Ultimate enrollment bypass completed successfully' 
         : 'Ultimate enrollment bypass completed with some failures'
