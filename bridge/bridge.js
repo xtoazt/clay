@@ -125,11 +125,31 @@ const wss = new WebSocketServer({
   path: '/ws'
 });
 
+// WebSocket error handling
+wss.on('error', (error) => {
+  console.error('❌ WebSocket server error:', error);
+  // Don't crash - WebSocket errors are recoverable
+});
+
 wss.on('connection', (ws, req) => {
   console.log('New WebSocket connection from:', req.socket.remoteAddress);
   
   let shellProcess = null;
   let sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Handle connection errors gracefully
+  ws.on('error', (error) => {
+    console.error(`WebSocket error for session ${sessionId}:`, error.message);
+    // Clean up process if exists
+    if (shellProcess) {
+      try {
+        shellProcess.kill();
+      } catch (e) {
+        // Ignore
+      }
+      activeProcesses.delete(sessionId);
+    }
+  });
   
   try {
     // Create PTY session for real terminal emulation
@@ -347,6 +367,15 @@ wss.on('connection', (ws, req) => {
   }
 });
 
+// Global error handler middleware
+app.use((error, req, res, next) => {
+  console.error('❌ Unhandled error:', error);
+  res.status(500).json({
+    success: false,
+    error: error.message || 'Internal server error'
+  });
+});
+
 // REST API endpoints for command execution
 app.post('/api/execute', async (req, res) => {
   const { command, cwd, root = false, privileged = false } = req.body;
@@ -369,34 +398,45 @@ app.post('/api/execute', async (req, res) => {
     }
     
     let result;
-    if (privileged) {
-      // Execute with full system privileges (bypass all restrictions)
-      result = await systemAccess.executeWithFullPrivileges(command, {
-        cwd: workingDir,
-        timeout: 30000
+    try {
+      if (privileged) {
+        // Execute with full system privileges (bypass all restrictions)
+        result = await systemAccess.executeWithFullPrivileges(command, {
+          cwd: workingDir,
+          timeout: 30000
+        });
+      } else if (root) {
+        // Execute as root
+        result = await systemAccess.executeAsRoot(command, {
+          cwd: workingDir,
+          timeout: 30000
+        });
+      } else {
+        // Regular execution
+        result = await execAsync(fullCommand, {
+          cwd: workingDir,
+          env: process.env,
+          timeout: 30000,
+          maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+        });
+      }
+      
+      res.json({
+        success: true,
+        output: result.stdout || result.stderr || '',
+        exitCode: result.stderr ? 1 : 0
       });
-    } else if (root) {
-      // Execute as root
-      result = await systemAccess.executeAsRoot(command, {
-        cwd: workingDir,
-        timeout: 30000
+    } catch (execError) {
+      // Command execution error - return error but don't crash
+      res.json({
+        success: false,
+        output: execError.message || String(execError),
+        exitCode: execError.code || 1
       });
-    } else {
-      // Regular execution
-      result = await execAsync(fullCommand, {
-      cwd: workingDir,
-      env: process.env,
-      timeout: 30000,
-      maxBuffer: 10 * 1024 * 1024 // 10MB buffer
-    });
     }
-    
-    res.json({
-      success: true,
-      output: result.stdout || result.stderr || '',
-      exitCode: result.stderr ? 1 : 0
-    });
   } catch (error) {
+    // Unexpected error - log but don't crash
+    console.error('❌ Error in /api/execute:', error);
     res.json({
       success: false,
       output: error.message || String(error),
@@ -1338,14 +1378,35 @@ app.get('/api/info', async (req, res) => {
   }
 });
 
-// Health check
+// Health check with comprehensive status
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    platform: process.platform,
-    pid: process.pid
-  });
+  try {
+    const health = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      platform: process.platform,
+      pid: process.pid,
+      uptime: process.uptime(),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024)
+      },
+      activeSessions: activeProcesses.size,
+      services: {
+        websocket: true,
+        rest: true,
+        puppeteer: true
+      }
+    };
+    res.json(health);
+  } catch (error) {
+    // Even health check errors shouldn't crash
+    res.status(500).json({
+      status: 'error',
+      error: error.message
+    });
+  }
 });
 
 // Puppeteer API endpoints
@@ -1554,13 +1615,59 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 8765;
 const HOST = process.env.HOST || '127.0.0.1';
 
-server.listen(PORT, HOST, () => {
-  console.log(`🚀 Clay Terminal Bridge running on http://${HOST}:${PORT}`);
-  console.log(`📡 WebSocket server ready at ws://${HOST}:${PORT}/ws`);
-  console.log(`💻 Shell: ${getShell()}`);
-  console.log(`🏠 Home directory: ${os.homedir()}`);
-  console.log(`🖥️  Platform: ${process.platform}`);
-  console.log(`\n✨ Ready to execute real system commands!`);
+// Enhanced error handling for server startup
+let serverStartAttempts = 0;
+const MAX_START_ATTEMPTS = 5;
+
+async function startServer() {
+  return new Promise((resolve, reject) => {
+    try {
+      server.listen(PORT, HOST, () => {
+        console.log(`🚀 Clay Terminal Bridge running on http://${HOST}:${PORT}`);
+        console.log(`📡 WebSocket server ready at ws://${HOST}:${PORT}/ws`);
+        console.log(`💻 Shell: ${getShell()}`);
+        console.log(`🏠 Home directory: ${os.homedir()}`);
+        console.log(`🖥️  Platform: ${process.platform}`);
+        console.log(`\n✨ Ready to execute real system commands!`);
+        resolve();
+      });
+
+      server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+          console.error(`❌ Port ${PORT} is already in use. Trying to recover...`);
+          // Try to find and kill the process using the port
+          const killPort = spawn('lsof', ['-ti', `:${PORT}`], { shell: true });
+          killPort.on('close', (code) => {
+            if (code === 0) {
+              console.log('🔄 Port freed, retrying...');
+              setTimeout(() => startServer(), 2000);
+            } else {
+              console.error('❌ Could not free port. Please manually stop the process using port', PORT);
+              reject(error);
+            }
+          });
+        } else {
+          console.error('❌ Server error:', error.message);
+          serverStartAttempts++;
+          if (serverStartAttempts < MAX_START_ATTEMPTS) {
+            console.log(`🔄 Retrying server start (attempt ${serverStartAttempts + 1}/${MAX_START_ATTEMPTS})...`);
+            setTimeout(() => startServer(), 2000);
+          } else {
+            reject(error);
+          }
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// Start server with error handling
+startServer().catch((error) => {
+  console.error('❌ Failed to start server after multiple attempts:', error);
+  // Don't exit - let the process manager handle it
+  process.exit(1);
 });
 
 // Graceful shutdown

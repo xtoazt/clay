@@ -54,6 +54,7 @@ async function installMacOSService() {
   const nodePath = process.execPath;
   const bridgePath = path.join(__dirname, 'bridge.js');
   
+  const bridgeManagerPath = path.join(__dirname, 'bridge-manager.js');
   const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -63,12 +64,17 @@ async function installMacOSService() {
   <key>ProgramArguments</key>
   <array>
     <string>${nodePath}</string>
-    <string>${bridgePath}</string>
+    <string>${bridgeManagerPath}</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <true/>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
   <key>StandardOutPath</key>
   <string>${homeDir}/Library/Logs/clay-bridge.log</string>
   <key>StandardErrorPath</key>
@@ -89,18 +95,21 @@ async function installMacOSService() {
 
 async function installLinuxService() {
   const serviceContent = `[Unit]
-Description=Clay Terminal Bridge
+Description=Clay Terminal Bridge - Robust Server
 After=network.target
 
 [Service]
 Type=simple
 User=${os.userInfo().username}
 WorkingDirectory=${__dirname}
-ExecStart=${process.execPath} ${path.join(__dirname, 'bridge.js')}
+ExecStart=${process.execPath} ${path.join(__dirname, 'bridge-manager.js')}
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
+# Ensure service always runs
+StartLimitInterval=0
+StartLimitBurst=0
 
 [Install]
 WantedBy=multi-user.target`;

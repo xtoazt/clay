@@ -8,7 +8,9 @@
     "start": "node bridge.js",
     "dev": "node --watch bridge.js",
     "install-service": "node install-service.js",
-    "auto-start": "node auto-start.js"
+    "auto-start": "node auto-start.js",
+    "manager": "node bridge-manager.js",
+    "robust": "node robust-bridge.js"
   },
   "keywords": ["terminal", "bridge", "nodejs"],
   "author": "",

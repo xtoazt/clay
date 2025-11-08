@@ -16,6 +16,11 @@ A powerful, feature-rich terminal that runs in your browser with real system acc
   - External Bridge (Node.js server) - Full system access
   - WebVM Bridge - Browser-based fallback
   - Automatic reconnection and health monitoring
+- **Robust Bridge Server** - Always-running bridge with auto-restart
+  - Bridge Manager - Automatic restart and health monitoring
+  - Error recovery - Graceful error handling and recovery
+  - Health checks - Continuous health monitoring
+  - Service installation - Auto-start on system boot
 - **Root/Privileged Access** - Execute commands with elevated privileges
 - **ChromeOS Integration** - Special support for ChromeOS with auto-start
 - **Cross-Platform** - Works on ChromeOS, macOS, Windows, Linux
@@ -47,8 +52,17 @@ A powerful, feature-rich terminal that runs in your browser with real system acc
 ## 🚀 Quick Start
 
 ### Web Version (No Installation)
-1. Open the web terminal in your browser
-2. The terminal automatically:
+1. **Start the Bridge Server** (Required for full functionality):
+   ```bash
+   cd bridge
+   npm install
+   npm run manager  # Recommended: uses bridge manager for auto-restart
+   # OR
+   npm start  # Direct start
+   ```
+
+2. Open the web terminal in your browser
+3. The terminal automatically:
    - Tries to connect to external bridge (if available)
    - Falls back to WebVM (browser-based)
    - Initializes AI assistant
