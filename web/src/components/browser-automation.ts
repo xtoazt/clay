@@ -4,8 +4,8 @@
  */
 
 import { notificationManager } from './notification';
-import { clayPuppeteerIntegration } from '../integrations/claypuppeteer';
-import type { PuppeteerBrowser, PuppeteerPage } from '../integrations/claypuppeteer';
+import { leafPuppeteerIntegration } from '../integrations/leafpuppeteer';
+import type { PuppeteerBrowser, PuppeteerPage } from '../integrations/leafpuppeteer';
 
 export class BrowserAutomation {
   private container: HTMLElement | null = null;
@@ -153,7 +153,7 @@ export class BrowserAutomation {
   private async launchBrowser(): Promise<void> {
     try {
       notificationManager.info('Launching browser...');
-      const result = await clayPuppeteerIntegration.launchBrowser(true);
+      const result = await leafPuppeteerIntegration.launchBrowser(true);
       
       if (result.success) {
         notificationManager.success(`Browser launched: ${result.browserId}`);
@@ -182,7 +182,7 @@ export class BrowserAutomation {
     if (!browsersList) return;
 
     try {
-      const result = await clayPuppeteerIntegration.listBrowsers();
+      const result = await leafPuppeteerIntegration.listBrowsers();
       
       if (result.success) {
         this.browsers = result.browsers;
@@ -257,7 +257,7 @@ export class BrowserAutomation {
     if (!pagesList) return;
 
     try {
-      const result = await clayPuppeteerIntegration.listPages();
+      const result = await leafPuppeteerIntegration.listPages();
       
       if (result.success) {
         this.pages = result.pages;
@@ -328,7 +328,7 @@ export class BrowserAutomation {
   private async createPage(browserId: string): Promise<void> {
     try {
       notificationManager.info('Creating page...');
-      const result = await clayPuppeteerIntegration.createPage(browserId);
+      const result = await leafPuppeteerIntegration.createPage(browserId);
       
       if (result.success) {
         notificationManager.success(`Page created: ${result.pageId}`);
@@ -351,7 +351,7 @@ export class BrowserAutomation {
 
     try {
       notificationManager.info('Closing browser...');
-      const result = await clayPuppeteerIntegration.closeBrowser(browserId);
+      const result = await leafPuppeteerIntegration.closeBrowser(browserId);
       
       if (result.success) {
         notificationManager.success('Browser closed');
@@ -370,7 +370,7 @@ export class BrowserAutomation {
   private async closePage(pageId: string): Promise<void> {
     try {
       notificationManager.info('Closing page...');
-      const result = await clayPuppeteerIntegration.closePage(pageId);
+      const result = await leafPuppeteerIntegration.closePage(pageId);
       
       if (result.success) {
         notificationManager.success('Page closed');
@@ -389,7 +389,7 @@ export class BrowserAutomation {
   private async takeScreenshot(pageId: string): Promise<void> {
     try {
       notificationManager.info('Taking screenshot...');
-      const result = await clayPuppeteerIntegration.screenshot(pageId);
+      const result = await leafPuppeteerIntegration.screenshot(pageId);
       
       if (result.success && result.screenshot) {
         // Create download link

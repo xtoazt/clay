@@ -1,10 +1,15 @@
 /**
- * Clayup Integration (Clay Development Environment)
+ * Leafup Integration (Azalea Development Environment)
  * Development environment setup tool for Chromebook/ChromeOS, macOS, and Linux
+ * 
+ * Leafup provides a streamlined way to set up and manage development environments
+ * across different platforms. It uses Nix-based package management to ensure
+ * consistent environments and easy package installation.
+ * 
  * Based on: https://github.com/tsirysndr/crosup
  */
 
-export interface ClayupConfig {
+export interface LeafupConfig {
   packages?: string[];
   tools?: string[];
   autoInstall?: boolean;
@@ -14,7 +19,7 @@ export interface BackendInterface {
   executeCommand(command: string, cwd?: string): Promise<{ exitCode: number; output: string }>;
 }
 
-export class ClayupIntegration {
+export class LeafupIntegration {
   private isAvailable: boolean = false;
   private version: string | null = null;
   private backend: BackendInterface | null = null;
@@ -60,9 +65,9 @@ export class ClayupIntegration {
   }
 
   /**
-   * Install crosup
+   * Install crosup (required for leafup)
    */
-  async installClayup(): Promise<{ success: boolean; output: string }> {
+  async installCrosup(): Promise<{ success: boolean; output: string }> {
     if (!this.backend) {
       return { success: false, output: 'Backend not available' };
     }
@@ -71,10 +76,10 @@ export class ClayupIntegration {
       const result = await this.executeCommand('curl -fsSL https://raw.githubusercontent.com/tsirysndr/crosup/main/install.sh | sh');
       return {
         success: result.exitCode === 0,
-        output: result.output || (result.exitCode === 0 ? 'Clayup installed successfully' : 'Failed to install clayup')
+        output: result.output || (result.exitCode === 0 ? 'Crosup installed successfully' : 'Failed to install crosup')
       };
     } catch (error: any) {
-      return { success: false, output: error.message || 'Failed to install clayup' };
+      return { success: false, output: error.message || 'Failed to install crosup' };
     }
   }
 
@@ -215,5 +220,5 @@ export class ClayupIntegration {
 }
 
 // Export singleton instance
-export const clayupIntegration = new ClayupIntegration();
+export const leafupIntegration = new LeafupIntegration();
 

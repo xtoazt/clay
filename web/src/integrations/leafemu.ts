@@ -1,12 +1,15 @@
 /**
- * Clay Emulator Integration (Clay x86 Emulator)
+ * Leaf Emulator Integration (Azalea x86 Emulator)
  * x86 PC emulator and x86-to-WebAssembly JIT compiler
- * Based on: https://github.com/copy/v86
  * 
- * This integration enhances WebVM with x86 emulation capabilities
+ * Leaf Emulator brings full x86 PC emulation to your browser. Run legacy
+ * operating systems, test software in isolated environments, or explore
+ * classic computing platforms - all without leaving your browser.
+ * 
+ * Based on: https://github.com/copy/v86
  */
 
-export interface ClayEmulatorConfig {
+export interface LeafEmulatorConfig {
   memory_size?: number; // Memory size in MB
   vga_memory_size?: number; // VGA memory size in MB
   screen_container?: HTMLElement;
@@ -29,12 +32,12 @@ export interface ClayEmulatorConfig {
   autostart?: boolean;
 }
 
-export class ClayEmulator {
-  private config: ClayEmulatorConfig;
+export class LeafEmulator {
+  private config: LeafEmulatorConfig;
   private emulator: any = null;
   private isRunning: boolean = false;
 
-  constructor(config: ClayEmulatorConfig) {
+  constructor(config: LeafEmulatorConfig) {
     this.config = config;
   }
 
@@ -121,7 +124,7 @@ export class ClayEmulator {
 /**
  * Clay Emulator Utilities
  */
-export class ClayEmulatorUtils {
+export class LeafEmulatorUtils {
   /**
    * Check if v86 is available
    */
@@ -137,8 +140,8 @@ export class ClayEmulatorUtils {
   /**
    * Create a new emulator instance
    */
-  static createEmulator(config: ClayEmulatorConfig): ClayEmulator {
-    return new ClayEmulator(config);
+  static createEmulator(config: LeafEmulatorConfig): LeafEmulator {
+    return new LeafEmulator(config);
   }
 
   /**
@@ -153,5 +156,5 @@ export class ClayEmulatorUtils {
 }
 
 // Export utilities
-export const clayEmulatorUtils = ClayEmulatorUtils;
+export const leafEmulatorUtils = LeafEmulatorUtils;
 

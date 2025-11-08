@@ -1,12 +1,18 @@
 /**
- * Clay Pod Integration (BrowserPod Container Runtime)
+ * Leaf Pod Integration (Azalea BrowserPod Container Runtime)
  * Browser-based container runtime for running Python and other applications
+ * 
+ * Leaf Pod enables running containerized applications directly in your browser.
+ * Execute Python scripts, run Node.js applications, or deploy any containerized
+ * workload - all without leaving the browser. Perfect for web-based development
+ * and testing environments.
+ * 
  * Based on: https://github.com/leaningtech/browserpod-meta
  */
 
-import type { BackendInterface } from './clayup';
+import type { BackendInterface } from './leafup';
 
-export interface ClayPodConfig {
+export interface LeafPodConfig {
   image?: string;
   command?: string[];
   env?: Record<string, string>;
@@ -14,17 +20,17 @@ export interface ClayPodConfig {
   volumes?: Record<string, string>;
 }
 
-export interface ClayPodContainer {
+export interface LeafPodContainer {
   containerId: string;
   image: string;
   status: 'running' | 'stopped' | 'paused';
   command?: string[];
 }
 
-export class ClayPodIntegration {
+export class LeafPodIntegration {
   private isAvailable: boolean = false;
   private backend: BackendInterface | null = null;
-  private containers: Map<string, ClayPodContainer> = new Map();
+  private containers: Map<string, LeafPodContainer> = new Map();
 
   constructor(backend?: BackendInterface) {
     this.backend = backend || null;
@@ -66,7 +72,7 @@ export class ClayPodIntegration {
   /**
    * Create a new container
    */
-  async createContainer(config: ClayPodConfig): Promise<{ success: boolean; containerId?: string; output: string }> {
+  async createContainer(config: LeafPodConfig): Promise<{ success: boolean; containerId?: string; output: string }> {
     if (!this.backend) {
       return { success: false, output: 'Backend not available' };
     }
@@ -102,7 +108,7 @@ export class ClayPodIntegration {
   /**
    * List all containers
    */
-  async listContainers(): Promise<{ success: boolean; containers: ClayPodContainer[]; output: string }> {
+  async listContainers(): Promise<{ success: boolean; containers: LeafPodContainer[]; output: string }> {
     if (!this.backend) {
       return { success: false, containers: [], output: 'Backend not available' };
     }
@@ -259,5 +265,5 @@ export class ClayPodIntegration {
 }
 
 // Export singleton instance
-export const clayPodIntegration = new ClayPodIntegration();
+export const leafPodIntegration = new LeafPodIntegration();
 

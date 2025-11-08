@@ -1,7 +1,7 @@
 {
-  "name": "clay-terminal-bridge",
+  "name": "azalea-terminal-bridge",
   "version": "1.0.0",
-  "description": "Clay Terminal Bridge - Local Node.js server for real system access",
+  "description": "Azalea Terminal Bridge - Local Node.js server for real system access",
   "main": "bridge.js",
   "type": "module",
   "scripts": {

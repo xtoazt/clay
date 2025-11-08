@@ -1,10 +1,16 @@
 /**
- * Clay Puppeteer Integration (Browser Automation)
+ * Leaf Puppeteer Integration (Azalea Browser Automation)
  * Browser automation using Puppeteer
+ * 
+ * Leaf Puppeteer provides powerful browser automation capabilities. Control
+ * headless or GUI browsers, navigate pages, take screenshots, scrape data,
+ * test accessibility, analyze performance, and much more. Perfect for web
+ * testing, scraping, and automation tasks.
+ * 
  * Based on: https://github.com/puppeteer/puppeteer
  */
 
-import type { BackendInterface } from './clayup';
+import type { BackendInterface } from './leafup';
 
 export interface PuppeteerBrowser {
   browserId: string;
@@ -18,7 +24,7 @@ export interface PuppeteerPage {
   title: string;
 }
 
-export class ClayPuppeteerIntegration {
+export class LeafPuppeteerIntegration {
   private isAvailable: boolean = false;
   private version: string | null = null;
   private backend: BackendInterface | null = null;
@@ -630,5 +636,5 @@ export class ClayPuppeteerIntegration {
 }
 
 // Export singleton instance
-export const clayPuppeteerIntegration = new ClayPuppeteerIntegration();
+export const leafPuppeteerIntegration = new LeafPuppeteerIntegration();
 

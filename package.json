@@ -1,10 +1,10 @@
 {
-  "name": "clay-util",
+  "name": "azalea-terminal",
   "version": "1.0.0",
-  "description": "A beautiful, modern terminal for the web - Perfect for ChromeOS users without terminal access",
-  "main": "dist/clay-util.js",
-  "module": "dist/clay-util.esm.js",
-  "types": "dist/clay-util.d.ts",
+  "description": "Azalea Terminal - A beautiful, modern terminal for the web - Perfect for ChromeOS users without terminal access",
+  "main": "dist/azalea-terminal.js",
+  "module": "dist/azalea-terminal.esm.js",
+  "types": "dist/azalea-terminal.d.ts",
   "files": [
     "dist",
     "package",
@@ -50,12 +50,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xtoazt/clay.git"
+    "url": "git+https://github.com/xtoazt/azalea.git"
   },
   "bugs": {
-    "url": "https://github.com/xtoazt/clay/issues"
+    "url": "https://github.com/xtoazt/azalea/issues"
   },
-  "homepage": "https://github.com/xtoazt/clay#readme",
+  "homepage": "https://github.com/xtoazt/azalea#readme",
   "devDependencies": {
     "typescript": "^5.0.0",
     "vite": "^5.0.0"

@@ -1,19 +1,24 @@
 /**
- * Clay Linux Integration (Clay Container Management)
+ * Leaf Linux Integration (Azalea Container Management)
  * Rapid setup scripts for ChromeOS Linux container
+ * 
+ * Leaf Linux provides tools to quickly set up and manage the ChromeOS Linux
+ * container (Crostini). It automates the installation of development tools,
+ * desktop environments, and common packages for a productive Linux environment.
+ * 
  * Based on: https://github.com/francis-chris5/Chrostini-Initializers
  */
 
-import type { BackendInterface } from './clayup';
+import type { BackendInterface } from './leafup';
 
-export interface ClayLinuxConfig {
+export interface LeafLinuxConfig {
   packages?: string[];
   desktop?: boolean;
   development?: boolean;
   multimedia?: boolean;
 }
 
-export class ClayLinuxIntegration {
+export class LeafLinuxIntegration {
   private isChromeOS: boolean = false;
   private isLinuxEnabled: boolean = false;
   private backend: BackendInterface | null = null;
@@ -65,7 +70,7 @@ export class ClayLinuxIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Linux is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Linux is only available on ChromeOS' };
     }
 
     try {
@@ -88,7 +93,7 @@ export class ClayLinuxIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Linux is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Linux is only available on ChromeOS' };
     }
 
     try {
@@ -111,7 +116,7 @@ export class ClayLinuxIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Linux is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Linux is only available on ChromeOS' };
     }
 
     try {
@@ -134,7 +139,7 @@ export class ClayLinuxIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Linux is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Linux is only available on ChromeOS' };
     }
 
     try {
@@ -157,7 +162,7 @@ export class ClayLinuxIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Linux is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Linux is only available on ChromeOS' };
     }
 
     try {
@@ -191,5 +196,5 @@ export class ClayLinuxIntegration {
 }
 
 // Export singleton instance
-export const clayLinuxIntegration = new ClayLinuxIntegration();
+export const leafLinuxIntegration = new LeafLinuxIntegration();
 

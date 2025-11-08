@@ -1,43 +1,46 @@
 /**
  * Integration Hub
- * Centralized access to all Clay integrations
+ * Centralized access to all Azalea integrations
+ * 
+ * All integrations use the "leaf" prefix for shorter command names.
+ * The main brand is "Azalea" but integrations are accessed via "leaf" commands.
  */
 
-import { clayupIntegration, BackendInterface } from './clayup';
-import { clayLinuxIntegration } from './claylinux';
-import { clayEmulatorUtils, ClayEmulator } from './clayemu';
-import { clayVMIntegration } from './clayvm';
-import { clayRecoveryIntegration } from './clayrecovery';
-import { clayPodIntegration } from './claypod';
-import { clayPuppeteerIntegration } from './claypuppeteer';
+import { leafupIntegration, BackendInterface } from './leafup';
+import { leafLinuxIntegration } from './leaflinux';
+import { leafEmulatorUtils, LeafEmulator } from './leafemu';
+import { leafVMIntegration } from './leafvm';
+import { leafRecoveryIntegration } from './leafrecovery';
+import { leafPodIntegration } from './leafpod';
+import { leafPuppeteerIntegration } from './leafpuppeteer';
 
 export type { BackendInterface };
 
 export {
-  clayupIntegration,
-  clayLinuxIntegration,
-  clayEmulatorUtils,
-  ClayEmulator,
-  clayVMIntegration,
-  clayRecoveryIntegration,
-  clayPodIntegration,
-  clayPuppeteerIntegration,
+  leafupIntegration,
+  leafLinuxIntegration,
+  leafEmulatorUtils,
+  LeafEmulator,
+  leafVMIntegration,
+  leafRecoveryIntegration,
+  leafPodIntegration,
+  leafPuppeteerIntegration,
 };
 
 /**
  * Integration Manager
- * Manages all Clay integrations and provides unified interface
+ * Manages all Azalea integrations and provides unified interface
  */
 export class IntegrationManager {
   private integrations: Map<string, any> = new Map();
 
   constructor() {
-    this.registerIntegration('clayup', clayupIntegration);
-    this.registerIntegration('claylinux', clayLinuxIntegration);
-    this.registerIntegration('clayvm', clayVMIntegration);
-    this.registerIntegration('clayrecovery', clayRecoveryIntegration);
-    this.registerIntegration('claypod', clayPodIntegration);
-    this.registerIntegration('claypuppeteer', clayPuppeteerIntegration);
+    this.registerIntegration('leafup', leafupIntegration);
+    this.registerIntegration('leaflinux', leafLinuxIntegration);
+    this.registerIntegration('leafvm', leafVMIntegration);
+    this.registerIntegration('leafrecovery', leafRecoveryIntegration);
+    this.registerIntegration('leafpod', leafPodIntegration);
+    this.registerIntegration('leafpuppeteer', leafPuppeteerIntegration);
   }
 
   /**
@@ -77,9 +80,9 @@ export class IntegrationManager {
       }
     }
 
-    // Check Clay Emulator separately
-    status.clayemu = {
-      available: clayEmulatorUtils.isAvailable(),
+    // Check Leaf Emulator separately
+    status.leafemu = {
+      available: leafEmulatorUtils.isAvailable(),
     };
 
     return status;
@@ -88,4 +91,3 @@ export class IntegrationManager {
 
 // Export singleton instance
 export const integrationManager = new IntegrationManager();
-

@@ -1,12 +1,18 @@
 /**
- * Clay VM Integration (Clay Virtual Machine Management)
+ * Leaf VM Integration (Azalea Virtual Machine Management)
  * Virtual machine management via VirtualBox
+ * 
+ * Leaf VM provides a command-line interface to manage VirtualBox virtual
+ * machines. Create, start, stop, and manage VMs directly from the terminal.
+ * Perfect for running multiple operating systems, testing environments, or
+ * isolated development setups.
+ * 
  * Based on: https://github.com/VirtualBox/virtualbox
  */
 
-import type { BackendInterface } from './clayup';
+import type { BackendInterface } from './leafup';
 
-export interface ClayVM {
+export interface LeafVM {
   name: string;
   uuid: string;
   state: 'running' | 'poweredoff' | 'saved' | 'paused' | 'aborted';
@@ -15,7 +21,7 @@ export interface ClayVM {
   vram: number;
 }
 
-export interface ClayVMConfig {
+export interface LeafVMConfig {
   name: string;
   osType?: string;
   memory?: number; // MB
@@ -24,7 +30,7 @@ export interface ClayVMConfig {
   network?: 'nat' | 'bridged' | 'hostonly' | 'internal';
 }
 
-export class ClayVMIntegration {
+export class LeafVMIntegration {
   private isAvailable: boolean = false;
   private version: string | null = null;
   private backend: BackendInterface | null = null;
@@ -72,7 +78,7 @@ export class ClayVMIntegration {
   /**
    * List all VMs
    */
-  async listVMs(): Promise<{ success: boolean; vms?: ClayVM[]; output: string }> {
+  async listVMs(): Promise<{ success: boolean; vms?: LeafVM[]; output: string }> {
     if (!this.backend) {
       return { success: false, output: 'Backend not available' };
     }
@@ -110,7 +116,7 @@ export class ClayVMIntegration {
   /**
    * Create a new VM
    */
-  async createVM(config: ClayVMConfig): Promise<{ success: boolean; output: string }> {
+  async createVM(config: LeafVMConfig): Promise<{ success: boolean; output: string }> {
     if (!this.backend) {
       return { success: false, output: 'Backend not available' };
     }
@@ -222,5 +228,5 @@ export class ClayVMIntegration {
 }
 
 // Export singleton instance
-export const clayVMIntegration = new ClayVMIntegration();
+export const leafVMIntegration = new LeafVMIntegration();
 

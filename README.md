@@ -1,4 +1,4 @@
-# Clay Terminal - Enhanced Edition
+# Azalea Terminal - Enhanced Edition
 
 A powerful, feature-rich terminal that runs in your browser with real system access, AI assistance, and cross-platform support.
 
@@ -98,150 +98,95 @@ The terminal uses a sophisticated bridge system with automatic fallback:
 3. **Automatic Fallback**
    - Tries external bridge first
    - Falls back to WebVM if unavailable
-   - Auto-reconnects when bridge becomes available
-   - Health monitoring and circuit breaker
+   - Seamless switching between modes
 
-### Error Handling
-- **Comprehensive Error Handler** - Tracks all errors with context
-- **Resilience Utilities** - Safe DOM operations, retry logic, timeouts
-- **Circuit Breaker** - Prevents cascading failures
-- **Graceful Degradation** - App always works, even with failures
+## ⌨️ Keyboard Shortcuts
 
-### AI System
-- **Standalone AI Service** - Works independently of terminal
-- **Global Instance** - Shared across all components
-- **Background Initialization** - Doesn't block startup
-- **Multiple Fallbacks** - Always available
+- `Ctrl+P` - Command palette
+- `Ctrl+E` - Toggle file manager
+- `Ctrl+B` - Toggle browser automation panel
+- `Ctrl+T` - New terminal tab
+- `Ctrl+W` - Close current tab
+- `Ctrl+Shift+P` - AI assistant
+- `Ctrl+K` - Clear terminal
+- `Ctrl+L` - Clear screen
 
-## 🛠️ Development
+## 📋 Commands
 
-### Project Structure
-```
-clay/
-├── web/              # Frontend (Vite + TypeScript)
-│   ├── src/
-│   │   ├── main.ts              # Main terminal class
-│   │   ├── enhanced-bridge.ts   # Enhanced bridge system
-│   │   ├── standalone-ai.ts     # Global AI service
-│   │   ├── utils/
-│   │   │   ├── error-handler.ts # Error handling
-│   │   │   └── resilience.ts    # Resilience utilities
-│   │   └── components/          # UI components
-│   └── package.json
-├── bridge/           # Node.js bridge server
-│   └── bridge.js
-└── backend/          # Backend utilities
-    ├── system-access.js
-    ├── privileged-apis.js
-    └── chromeos-settings-unlocker.js
-```
-
-### Building
-```bash
-cd web
-npm install
-npm run build
-```
-
-### Development
-```bash
-cd web
-npm run dev
-```
-
-## 🔧 Configuration
-
-### Bridge Configuration
-The enhanced bridge system can be configured:
-
-```typescript
-const bridge = getEnhancedBridge({
-  preferredType: 'external',  // 'external' | 'webvm'
-  enableAutoFallback: true,   // Auto-fallback on failure
-  retryAttempts: 3,           // Retry attempts
-  timeout: 10000              // Connection timeout
-});
-```
-
-### AI Configuration
-```typescript
-const ai = getWebLLMService({
-  quantization: 'q4f16_1',    // 'q4f16_1' | 'q4f32_1' | 'q8f16_1' | 'f16'
-  temperature: 0.7,
-  topP: 0.95,
-  maxGenLen: 2048
-});
-```
-
-## 🎯 Usage
-
-### Basic Commands
-- `ls` - List files
-- `cd <dir>` - Change directory
-- `pwd` - Print working directory
-- `cat <file>` - Display file contents
-- `clear` - Clear terminal
-- `help` - Show help
-
-### AI Commands
-- `@ai <question>` - Ask AI a question
-- `@ai enable` - Enable AI auto-execution
-- `@ai disable` - Disable AI auto-execution
-- `@ai status` - Show AI status
-
-### Special Commands
-- `settings` - Open ChromeOS settings unlocker
-- `scan` - Scan filesystem for AI context
+### Built-in Commands
+- `help` - Show help message
+- `clear` - Clear terminal screen
+- `exit` - Close terminal tab
+- `tabs` - List all tabs
+- `newtab` - Create new tab
+- `closetab <n>` - Close tab by number
+- `switchtab <n>` - Switch to tab by number
 - `share` - Copy session share link
 
 ### Integration Commands
-- `clayup` - Development environment setup tool
-  - `clayup init [toml|hcl]` - Initialize configuration
-  - `clayup install <packages>` - Install development packages
-  - `clayup search <query>` - Search nixpkgs repository
-  - `clayup status` - Show clayup status
-- `claylinux` - ChromeOS Linux container setup (ChromeOS only)
-  - `claylinux init` - Quick development setup
-  - `claylinux desktop` - Install desktop environment
-  - `claylinux status` - Check container status
-- `clayrecovery` - ChromeOS recovery/modding tools (ChromeOS only)
-  - `clayrecovery info` - Device information
-  - `clayrecovery recovery` - Recovery mode status
-  - `clayrecovery firmware` - Firmware information
-  - `clayrecovery partitions` - Partition information
-- `clayvm` / `clay-box` - VirtualBox VM management
-  - `clayvm list` - List all VMs
-  - `clayvm start <vm>` - Start a VM
-  - `clayvm stop <vm>` - Stop a VM
-- `clayemu` - x86 emulator (browser-based)
-  - `clayemu status` - Check Clay Emulator availability
-- `claypod` - BrowserPod container runtime (Python, etc.)
-  - `claypod create [image]` - Create container
-  - `claypod list` - List all containers
-  - `claypod exec <containerId> <command>` - Execute command in container
-  - `claypod python <containerId> <code>` - Run Python code
-  - `claypod stop <containerId>` - Stop container
-  - `claypod remove <containerId>` - Remove container
-  - `claypod logs <containerId>` - Get container logs
-  - `claypod status` - Show status
-- `claypuppeteer` - Browser automation with Puppeteer
-  - `claypuppeteer launch [gui]` - Launch browser (headless or GUI)
-  - `claypuppeteer list` - List all browsers
-  - `claypuppeteer pages` - List all pages
-  - `claypuppeteer page create <browserId>` - Create new page
-  - `claypuppeteer page navigate <pageId> <url>` - Navigate to URL
-  - `claypuppeteer page screenshot <pageId>` - Take screenshot
-  - `claypuppeteer click <pageId> <selector>` - Click element
-  - `claypuppeteer type <pageId> <selector> <text>` - Type text
-  - `claypuppeteer eval <pageId> <script>` - Evaluate JavaScript
-  - `claypuppeteer analyze <pageId>` - Analyze page performance
-  - `claypuppeteer seo <pageId>` - Extract SEO data
-  - `claypuppeteer accessibility <pageId>` - Test accessibility
-  - `claypuppeteer scrape <pageId> <selectors>` - Scrape data with CSS selectors
-  - `claypuppeteer content <pageId>` - Extract structured content
-  - `claypuppeteer report <pageId>` - Generate comprehensive page report
-  - `claypuppeteer fill <pageId> <formData>` - Fill form automatically
-  - `claypuppeteer status` - Show status
+
+All integrations use the "leaf" prefix for shorter command names:
+
+- `leafup` - Development environment setup tool
+  - `leafup init [toml|hcl]` - Initialize configuration
+  - `leafup install <packages>` - Install development packages
+  - `leafup search <query>` - Search nixpkgs repository
+  - `leafup status` - Show leafup status
+  - **Description**: Leafup provides a streamlined way to set up and manage development environments across different platforms. It uses Nix-based package management to ensure consistent environments and easy package installation.
+
+- `leaflinux` - ChromeOS Linux container setup (ChromeOS only)
+  - `leaflinux init` - Quick development setup
+  - `leaflinux desktop` - Install desktop environment
+  - `leaflinux status` - Check container status
+  - **Description**: Leaf Linux provides tools to quickly set up and manage the ChromeOS Linux container (Crostini). It automates the installation of development tools, desktop environments, and common packages for a productive Linux environment.
+
+- `leafrecovery` - ChromeOS recovery/modding tools (ChromeOS only)
+  - `leafrecovery info` - Device information
+  - `leafrecovery recovery` - Recovery mode status
+  - `leafrecovery firmware` - Firmware information
+  - `leafrecovery partitions` - Partition information
+  - **Description**: Leaf Recovery provides access to ChromeOS recovery and modding tools, allowing you to check device information, firmware details, recovery mode status, and partition information. Essential for ChromeOS developers and power users.
+
+- `leafvm` / `leaf-box` - VirtualBox VM management
+  - `leafvm list` - List all VMs
+  - `leafvm start <vm>` - Start a VM
+  - `leafvm stop <vm>` - Stop a VM
+  - **Description**: Leaf VM provides a command-line interface to manage VirtualBox virtual machines. Create, start, stop, and manage VMs directly from the terminal. Perfect for running multiple operating systems, testing environments, or isolated development setups.
+
+- `leafemu` - x86 emulator (browser-based)
+  - `leafemu status` - Check Leaf Emulator availability
+  - **Description**: Leaf Emulator brings full x86 PC emulation to your browser. Run legacy operating systems, test software in isolated environments, or explore classic computing platforms - all without leaving your browser.
+
+- `leafpod` - BrowserPod container runtime (Python, etc.)
+  - `leafpod create [image]` - Create container
+  - `leafpod list` - List all containers
+  - `leafpod exec <containerId> <command>` - Execute command in container
+  - `leafpod python <containerId> <code>` - Run Python code
+  - `leafpod stop <containerId>` - Stop container
+  - `leafpod remove <containerId>` - Remove container
+  - `leafpod logs <containerId>` - Get container logs
+  - `leafpod status` - Show status
+  - **Description**: Leaf Pod enables running containerized applications directly in your browser. Execute Python scripts, run Node.js applications, or deploy any containerized workload - all without leaving the browser. Perfect for web-based development and testing environments.
+
+- `leafpuppeteer` - Browser automation with Puppeteer
+  - `leafpuppeteer launch [gui]` - Launch browser (headless or GUI)
+  - `leafpuppeteer list` - List all browsers
+  - `leafpuppeteer pages` - List all pages
+  - `leafpuppeteer page create <browserId>` - Create new page
+  - `leafpuppeteer page navigate <pageId> <url>` - Navigate to URL
+  - `leafpuppeteer page screenshot <pageId>` - Take screenshot
+  - `leafpuppeteer click <pageId> <selector>` - Click element
+  - `leafpuppeteer type <pageId> <selector> <text>` - Type text
+  - `leafpuppeteer eval <pageId> <script>` - Evaluate JavaScript
+  - `leafpuppeteer analyze <pageId>` - Analyze page performance
+  - `leafpuppeteer seo <pageId>` - Extract SEO data
+  - `leafpuppeteer accessibility <pageId>` - Test accessibility
+  - `leafpuppeteer scrape <pageId> <selectors>` - Scrape data with CSS selectors
+  - `leafpuppeteer content <pageId>` - Extract structured content
+  - `leafpuppeteer report <pageId>` - Generate comprehensive page report
+  - `leafpuppeteer fill <pageId> <formData>` - Fill form automatically
+  - `leafpuppeteer status` - Show status
+  - **Description**: Leaf Puppeteer provides powerful browser automation capabilities. Control headless or GUI browsers, navigate pages, take screenshots, scrape data, test accessibility, analyze performance, and much more. Perfect for web testing, scraping, and automation tasks.
 
 ## 🔒 Security
 
@@ -256,20 +201,20 @@ See LICENSE file for details.
 
 ## 🔌 Integrations
 
-Clay Terminal integrates with several powerful tools and services:
+Azalea Terminal integrates with several powerful tools and services:
 
 ### Development Tools
-- **[Clayup](https://github.com/tsirysndr/crosup)** (based on crosup) - Quick development environment setup for Chromebook/ChromeOS, macOS, and Linux
-- **[Clay Linux](https://github.com/francis-chris5/Chrostini-Initializers)** (based on Chrostini-Initializers) - Rapid ChromeOS Linux container setup scripts
+- **[Leafup](https://github.com/tsirysndr/crosup)** (based on crosup) - Quick development environment setup for Chromebook/ChromeOS, macOS, and Linux
+- **[Leaf Linux](https://github.com/francis-chris5/Chrostini-Initializers)** (based on Chrostini-Initializers) - Rapid ChromeOS Linux container setup scripts
 
 ### Virtualization
-- **[Clay VM](https://github.com/VirtualBox/virtualbox)** (based on VirtualBox) - Virtual machine management
-- **[Clay Emulator](https://github.com/copy/v86)** (based on v86) - x86 PC emulator running in the browser
-- **[Clay Pod](https://github.com/leaningtech/browserpod-meta)** (based on BrowserPod) - Browser-based container runtime for Python and other applications
-- **[Clay Puppeteer](https://github.com/puppeteer/puppeteer)** (based on Puppeteer) - Browser automation
+- **[Leaf VM](https://github.com/VirtualBox/virtualbox)** (based on VirtualBox) - Virtual machine management
+- **[Leaf Emulator](https://github.com/copy/v86)** (based on v86) - x86 PC emulator running in the browser
+- **[Leaf Pod](https://github.com/leaningtech/browserpod-meta)** (based on BrowserPod) - Browser-based container runtime for Python and other applications
+- **[Leaf Puppeteer](https://github.com/puppeteer/puppeteer)** (based on Puppeteer) - Browser automation
 
 ### ChromeOS Tools
-- **[Clay Recovery](https://github.com/MercuryWorkshop/RecoMod)** (based on RecoMod) - ChromeOS recovery and modding tools
+- **[Leaf Recovery](https://github.com/MercuryWorkshop/RecoMod)** (based on RecoMod) - ChromeOS recovery and modding tools
 
 All integrations are accessible via terminal commands and work seamlessly with the bridge backend.
 
@@ -277,42 +222,35 @@ All integrations are accessible via terminal commands and work seamlessly with t
 
 - [xterm.js](https://xtermjs.org/) - Terminal emulator
 - [WebLLM](https://webllm.mlc.ai/) - Browser-based AI inference
-- [BrowserPod](https://github.com/leaningtech/browserpod-meta) - Inspiration for in-browser runtime (integrated as Clay Browser)
+- [BrowserPod](https://github.com/leaningtech/browserpod-meta) - Inspiration for in-browser runtime (integrated as Leaf Pod)
 - [Puppeteer](https://github.com/puppeteer/puppeteer) - Browser automation library
-- [crosup](https://github.com/tsirysndr/crosup) - Development environment setup (integrated as Clayup)
-- [v86](https://github.com/copy/v86) - x86 emulation in browser (integrated as Clay Emulator)
+- [crosup](https://github.com/tsirysndr/crosup) - Development environment setup (integrated as Leafup)
+- [v86](https://github.com/copy/v86) - x86 emulation in browser (integrated as Leaf Emulator)
 
 ## 🐛 Troubleshooting
 
 ### Terminal Not Loading
 - Check browser console for errors
-- Ensure DOM is fully loaded
-- Try refreshing the page
+- Ensure JavaScript is enabled
+- Try a different browser
 
 ### Bridge Not Connecting
-- Verify bridge server is running: `curl http://127.0.0.1:8765/api/health`
+- Ensure bridge server is running (`npm start` in bridge directory)
 - Check firewall settings
-- Terminal will auto-fallback to WebVM
+- Verify port 8765 is not in use
+- Check bridge logs: `tail -f /tmp/azalea-bridge.log`
 
-### AI Not Working
-- Check browser console for WebLLM errors
-- AI will gracefully disable if model not available
-- Terminal continues to work without AI
+### Commands Not Working
+- Ensure bridge backend is connected (check status indicator)
+- Try reconnecting: refresh page
+- Check browser console for errors
 
-### ChromeOS Issues
-- Ensure Linux (Beta) is enabled
-- Bridge should run in Linux container
-- Check Linux Files folder permissions
+## 📦 Repository
 
-## 🚧 Roadmap
+Azalea Terminal is available at:
+- **Primary**: https://github.com/xtoazt/azalea
+- **Organization**: https://github.com/xazalea/azalea
 
-- [ ] Split pane support
-- [ ] Multiple theme options
-- [ ] Profile system
-- [ ] Enhanced clipboard
-- [ ] Full keyboard navigation
-- [ ] Screen reader support
+## 🤝 Contributing
 
----
-
-**Made with precision to always work, everywhere.**
+Contributions are welcome! Please feel free to submit a Pull Request.

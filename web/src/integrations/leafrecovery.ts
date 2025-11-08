@@ -1,18 +1,24 @@
 /**
- * Clay Recovery Integration (Clay Recovery & Modding Tools)
+ * Leaf Recovery Integration (Azalea Recovery & Modding Tools)
  * ChromeOS Recovery and Modding Tools
+ * 
+ * Leaf Recovery provides access to ChromeOS recovery and modding tools,
+ * allowing you to check device information, firmware details, recovery mode
+ * status, and partition information. Essential for ChromeOS developers and
+ * power users who need to modify or troubleshoot their devices.
+ * 
  * Based on: https://github.com/MercuryWorkshop/RecoMod
  */
 
-import type { BackendInterface } from './clayup';
+import type { BackendInterface } from './leafup';
 
-export interface ClayRecoveryConfig {
+export interface LeafRecoveryConfig {
   device?: string;
   recovery?: boolean;
   modding?: boolean;
 }
 
-export class ClayRecoveryIntegration {
+export class LeafRecoveryIntegration {
   private isChromeOS: boolean = false;
   private isAvailable: boolean = false;
   private backend: BackendInterface | null = null;
@@ -76,7 +82,7 @@ export class ClayRecoveryIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Recovery is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Recovery is only available on ChromeOS' };
     }
 
     try {
@@ -99,7 +105,7 @@ export class ClayRecoveryIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Recovery is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Recovery is only available on ChromeOS' };
     }
 
     try {
@@ -122,7 +128,7 @@ export class ClayRecoveryIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Recovery is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Recovery is only available on ChromeOS' };
     }
 
     try {
@@ -145,7 +151,7 @@ export class ClayRecoveryIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Recovery is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Recovery is only available on ChromeOS' };
     }
 
     try {
@@ -168,7 +174,7 @@ export class ClayRecoveryIntegration {
     }
 
     if (!this.isChromeOS) {
-      return { success: false, output: 'Clay Recovery is only available on ChromeOS' };
+      return { success: false, output: 'Leaf Recovery is only available on ChromeOS' };
     }
 
     try {
@@ -201,5 +207,5 @@ export class ClayRecoveryIntegration {
 }
 
 // Export singleton instance
-export const clayRecoveryIntegration = new ClayRecoveryIntegration();
+export const leafRecoveryIntegration = new LeafRecoveryIntegration();
 
