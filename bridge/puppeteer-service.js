@@ -5,6 +5,7 @@
  */
 
 import puppeteer from 'puppeteer';
+import { PuppeteerUtils } from './puppeteer-utils.js';
 
 class PuppeteerService {
   constructor() {
@@ -369,6 +370,151 @@ class PuppeteerService {
         pdf: pdf.toString('base64'),
         format: 'pdf'
       };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Analyze page performance
+   */
+  async analyzePerformance(pageId) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      const result = await PuppeteerUtils.analyzePerformance(page);
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Extract SEO data
+   */
+  async extractSEO(pageId) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.extractSEO(page);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Test accessibility
+   */
+  async testAccessibility(pageId) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.testAccessibility(page);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Extract structured data
+   */
+  async extractStructuredData(pageId) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.extractStructuredData(page);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Extract content
+   */
+  async extractContent(pageId, options = {}) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.extractContent(page, options);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Scrape data with selectors
+   */
+  async scrape(pageId, selectors) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.scrape(page, selectors);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Fill form
+   */
+  async fillForm(pageId, formData) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.fillForm(page, formData);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Generate comprehensive report
+   */
+  async generateReport(pageId, url) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.generateReport(page, url || page.url());
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Wait for condition
+   */
+  async waitForCondition(pageId, condition, timeout = 30000) {
+    try {
+      const page = this.pages.get(pageId);
+      if (!page) {
+        return { success: false, error: 'Page not found' };
+      }
+
+      return await PuppeteerUtils.waitForCondition(page, condition, timeout);
     } catch (error) {
       return { success: false, error: error.message };
     }

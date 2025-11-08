@@ -1,19 +1,10 @@
 /**
- * BrowserPod Integration with Puppeteer
- * Browser-based runtime and container system enhanced with Puppeteer
- * https://github.com/leaningtech/browserpod-meta
- * https://github.com/puppeteer/puppeteer
+ * Clay Puppeteer Integration (Browser Automation)
+ * Browser automation using Puppeteer
+ * Based on: https://github.com/puppeteer/puppeteer
  */
 
-import type { BackendInterface } from './crosup';
-
-export interface BrowserPodConfig {
-  image?: string;
-  command?: string[];
-  env?: Record<string, string>;
-  ports?: Record<number, number>;
-  volumes?: Record<string, string>;
-}
+import type { BackendInterface } from './clayup';
 
 export interface PuppeteerBrowser {
   browserId: string;
@@ -27,7 +18,7 @@ export interface PuppeteerPage {
   title: string;
 }
 
-export class BrowserPodIntegration {
+export class ClayPuppeteerIntegration {
   private isAvailable: boolean = false;
   private version: string | null = null;
   private backend: BackendInterface | null = null;
@@ -48,7 +39,7 @@ export class BrowserPodIntegration {
   }
 
   /**
-   * Check if BrowserPod/Puppeteer is available
+   * Check if Puppeteer is available
    */
   async checkAvailability(): Promise<boolean> {
     if (!this.backend) {
@@ -290,99 +281,6 @@ export class BrowserPodIntegration {
   }
 
   /**
-   * Create a new BrowserPod container (legacy - now uses Puppeteer)
-   */
-  async createContainer(config: BrowserPodConfig): Promise<{ success: boolean; containerId?: string; output: string }> {
-    // Use Puppeteer browser as container
-    return this.launchBrowser(true, {});
-  }
-
-  /**
-   * List running containers (browsers)
-   */
-  async listContainers(): Promise<{ success: boolean; containers: any[]; output: string }> {
-    const browsersResult = await this.listBrowsers();
-    return {
-      success: browsersResult.success,
-      containers: browsersResult.browsers.map(b => ({
-        id: b.browserId,
-        type: 'browser',
-        status: b.connected ? 'running' : 'stopped',
-        pages: b.pages.length
-      })),
-      output: browsersResult.output
-    };
-  }
-
-  /**
-   * Execute command in container (evaluate JavaScript on page)
-   */
-  async execInContainer(containerId: string, command: string[]): Promise<{ success: boolean; output: string }> {
-    // For browser automation, we evaluate JavaScript
-    if (command.length === 0) {
-      return { success: false, output: 'No command provided' };
-    }
-
-    // Find a page for this browser
-    const browser = this.browsers.get(containerId);
-    if (!browser || browser.pages.length === 0) {
-      return { success: false, output: 'No pages available in browser' };
-    }
-
-    const pageId = browser.pages[0];
-    const script = command.join(' ');
-    
-    return this.evaluate(pageId, script);
-  }
-
-  /**
-   * Stop a container (close browser)
-   */
-  async stopContainer(containerId: string): Promise<{ success: boolean; output: string }> {
-    return this.closeBrowser(containerId);
-  }
-
-  /**
-   * Remove a container (close browser)
-   */
-  async removeContainer(containerId: string): Promise<{ success: boolean; output: string }> {
-    return this.closeBrowser(containerId);
-  }
-
-  /**
-   * Get container logs (get page content)
-   */
-  async getContainerLogs(containerId: string, tail: number = 100): Promise<{ success: boolean; output: string }> {
-    const browser = this.browsers.get(containerId);
-    if (!browser || browser.pages.length === 0) {
-      return { success: false, output: 'No pages available' };
-    }
-
-    const pageId = browser.pages[0];
-    
-    try {
-      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        return {
-          success: true,
-          output: `Page: ${result.url}\nTitle: ${result.title}\nContent length: ${result.content?.length || 0} chars`
-        };
-      }
-
-      return { success: false, output: result.error || 'Failed to get content' };
-    } catch (error: any) {
-      return { success: false, output: error.message || 'Failed to get logs' };
-    }
-  }
-
-  /**
    * List all pages
    */
   async listPages(): Promise<{ success: boolean; pages: PuppeteerPage[]; output: string }> {
@@ -540,6 +438,187 @@ export class BrowserPodIntegration {
     }
   }
 
+  /**
+   * Analyze page performance
+   */
+  async analyzePerformance(pageId: string): Promise<{ success: boolean; metrics?: any; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        metrics: result.metrics,
+        output: result.success ? 'Performance analyzed' : result.error || 'Failed to analyze'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to analyze performance' };
+    }
+  }
+
+  /**
+   * Extract SEO data
+   */
+  async extractSEO(pageId: string): Promise<{ success: boolean; seo?: any; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        seo: result.seo,
+        output: result.success ? 'SEO data extracted' : result.error || 'Failed to extract SEO'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to extract SEO' };
+    }
+  }
+
+  /**
+   * Test accessibility
+   */
+  async testAccessibility(pageId: string): Promise<{ success: boolean; accessibility?: any; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/accessibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        accessibility: result.accessibility,
+        output: result.success ? 'Accessibility tested' : result.error || 'Failed to test accessibility'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to test accessibility' };
+    }
+  }
+
+  /**
+   * Extract content
+   */
+  async extractContent(pageId: string, options: any = {}): Promise<{ success: boolean; content?: any; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, options })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        content: result.content,
+        output: result.success ? 'Content extracted' : result.error || 'Failed to extract content'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to extract content' };
+    }
+  }
+
+  /**
+   * Scrape data with selectors
+   */
+  async scrape(pageId: string, selectors: Record<string, string>): Promise<{ success: boolean; data?: any; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, selectors })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        data: result.data,
+        output: result.success ? 'Data scraped' : result.error || 'Failed to scrape'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to scrape' };
+    }
+  }
+
+  /**
+   * Fill form
+   */
+  async fillForm(pageId: string, formData: Record<string, string>): Promise<{ success: boolean; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/fill-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, formData })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        output: result.success ? 'Form filled' : result.error || 'Failed to fill form'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to fill form' };
+    }
+  }
+
+  /**
+   * Generate comprehensive report
+   */
+  async generateReport(pageId: string, url?: string): Promise<{ success: boolean; report?: any; output: string }> {
+    if (!this.backend) {
+      return { success: false, output: 'Backend not available' };
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:8765/api/puppeteer/page/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, url })
+      });
+
+      const result = await response.json();
+      return {
+        success: result.success,
+        report: result,
+        output: result.success ? 'Report generated' : result.error || 'Failed to generate report'
+      };
+    } catch (error: any) {
+      return { success: false, output: error.message || 'Failed to generate report' };
+    }
+  }
+
   getStatus(): { available: boolean; version: string | null; browsers: number; pages: number } {
     return {
       available: this.isAvailable,
@@ -551,5 +630,5 @@ export class BrowserPodIntegration {
 }
 
 // Export singleton instance
-export const browserPodIntegration = new BrowserPodIntegration();
+export const clayPuppeteerIntegration = new ClayPuppeteerIntegration();
 

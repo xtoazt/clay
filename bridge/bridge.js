@@ -1594,6 +1594,111 @@ app.get('/api/puppeteer/page/list', async (req, res) => {
   }
 });
 
+// Advanced Puppeteer utilities endpoints
+app.post('/api/puppeteer/page/analyze', async (req, res) => {
+  try {
+    const { pageId } = req.body;
+    if (!pageId) {
+      return res.status(400).json({ success: false, error: 'pageId is required' });
+    }
+    const result = await puppeteerService.analyzePerformance(pageId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/seo', async (req, res) => {
+  try {
+    const { pageId } = req.body;
+    if (!pageId) {
+      return res.status(400).json({ success: false, error: 'pageId is required' });
+    }
+    const result = await puppeteerService.extractSEO(pageId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/accessibility', async (req, res) => {
+  try {
+    const { pageId } = req.body;
+    if (!pageId) {
+      return res.status(400).json({ success: false, error: 'pageId is required' });
+    }
+    const result = await puppeteerService.testAccessibility(pageId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/content', async (req, res) => {
+  try {
+    const { pageId, options } = req.body;
+    if (!pageId) {
+      return res.status(400).json({ success: false, error: 'pageId is required' });
+    }
+    const result = await puppeteerService.extractContent(pageId, options);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/scrape', async (req, res) => {
+  try {
+    const { pageId, selectors } = req.body;
+    if (!pageId || !selectors) {
+      return res.status(400).json({ success: false, error: 'pageId and selectors are required' });
+    }
+    const result = await puppeteerService.scrape(pageId, selectors);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/fill-form', async (req, res) => {
+  try {
+    const { pageId, formData } = req.body;
+    if (!pageId || !formData) {
+      return res.status(400).json({ success: false, error: 'pageId and formData are required' });
+    }
+    const result = await puppeteerService.fillForm(pageId, formData);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/report', async (req, res) => {
+  try {
+    const { pageId, url } = req.body;
+    if (!pageId) {
+      return res.status(400).json({ success: false, error: 'pageId is required' });
+    }
+    const result = await puppeteerService.generateReport(pageId, url);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/puppeteer/page/wait', async (req, res) => {
+  try {
+    const { pageId, condition, timeout } = req.body;
+    if (!pageId || !condition) {
+      return res.status(400).json({ success: false, error: 'pageId and condition are required' });
+    }
+    const result = await puppeteerService.waitForCondition(pageId, condition, timeout);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Serve a simple status page
 app.get('/', (req, res) => {
   res.json({

@@ -1,40 +1,43 @@
 /**
  * Integration Hub
- * Centralized access to all integrations
+ * Centralized access to all Clay integrations
  */
 
-import { crosupIntegration, BackendInterface } from './crosup';
-import { chrostiniIntegration } from './chrostini';
-import { v86Utils, V86Emulator } from './v86-emulator';
-import { virtualBoxIntegration } from './virtualbox';
-import { recomodIntegration } from './recomod';
-import { browserPodIntegration } from './browserpod';
+import { clayupIntegration, BackendInterface } from './clayup';
+import { clayLinuxIntegration } from './claylinux';
+import { clayEmulatorUtils, ClayEmulator } from './clayemu';
+import { clayVMIntegration } from './clayvm';
+import { clayRecoveryIntegration } from './clayrecovery';
+import { clayPodIntegration } from './claypod';
+import { clayPuppeteerIntegration } from './claypuppeteer';
 
 export type { BackendInterface };
 
 export {
-  crosupIntegration,
-  chrostiniIntegration,
-  v86Utils,
-  V86Emulator,
-  virtualBoxIntegration,
-  recomodIntegration,
-  browserPodIntegration,
+  clayupIntegration,
+  clayLinuxIntegration,
+  clayEmulatorUtils,
+  ClayEmulator,
+  clayVMIntegration,
+  clayRecoveryIntegration,
+  clayPodIntegration,
+  clayPuppeteerIntegration,
 };
 
 /**
  * Integration Manager
- * Manages all integrations and provides unified interface
+ * Manages all Clay integrations and provides unified interface
  */
 export class IntegrationManager {
   private integrations: Map<string, any> = new Map();
 
   constructor() {
-    this.registerIntegration('crosup', crosupIntegration);
-    this.registerIntegration('chrostini', chrostiniIntegration);
-    this.registerIntegration('virtualbox', virtualBoxIntegration);
-    this.registerIntegration('recomod', recomodIntegration);
-    this.registerIntegration('browserpod', browserPodIntegration);
+    this.registerIntegration('clayup', clayupIntegration);
+    this.registerIntegration('claylinux', clayLinuxIntegration);
+    this.registerIntegration('clayvm', clayVMIntegration);
+    this.registerIntegration('clayrecovery', clayRecoveryIntegration);
+    this.registerIntegration('claypod', clayPodIntegration);
+    this.registerIntegration('claypuppeteer', clayPuppeteerIntegration);
   }
 
   /**
@@ -74,9 +77,9 @@ export class IntegrationManager {
       }
     }
 
-    // Check v86 separately
-    status.v86 = {
-      available: v86Utils.isAvailable(),
+    // Check Clay Emulator separately
+    status.clayemu = {
+      available: clayEmulatorUtils.isAvailable(),
     };
 
     return status;

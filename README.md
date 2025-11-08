@@ -195,37 +195,53 @@ const ai = getWebLLMService({
 - `share` - Copy session share link
 
 ### Integration Commands
-- `crosup` - Development environment setup tool
-  - `crosup init [toml|hcl]` - Initialize configuration
-  - `crosup install <packages>` - Install development packages
-  - `crosup search <query>` - Search nixpkgs repository
-  - `crosup status` - Show crosup status
-- `chrostini` - ChromeOS Linux container setup (ChromeOS only)
-  - `chrostini init` - Quick development setup
-  - `chrostini desktop` - Install desktop environment
-  - `chrostini status` - Check container status
-- `recomod` - ChromeOS recovery/modding tools (ChromeOS only)
-  - `recomod info` - Device information
-  - `recomod recovery` - Recovery mode status
-  - `recomod firmware` - Firmware information
-  - `recomod partitions` - Partition information
-- `vbox` / `virtualbox` - VirtualBox VM management
-  - `vbox list` - List all VMs
-  - `vbox start <vm>` - Start a VM
-  - `vbox stop <vm>` - Stop a VM
-- `v86` - x86 emulator (browser-based)
-  - `v86 status` - Check v86 availability
-- `browserpod` - Browser automation with Puppeteer
-  - `browserpod launch [gui]` - Launch browser (headless or GUI)
-  - `browserpod list` - List all browsers
-  - `browserpod pages` - List all pages
-  - `browserpod page create <browserId>` - Create new page
-  - `browserpod page navigate <pageId> <url>` - Navigate to URL
-  - `browserpod page screenshot <pageId>` - Take screenshot
-  - `browserpod click <pageId> <selector>` - Click element
-  - `browserpod type <pageId> <selector> <text>` - Type text
-  - `browserpod eval <pageId> <script>` - Evaluate JavaScript
-  - `browserpod status` - Show status
+- `clayup` - Development environment setup tool
+  - `clayup init [toml|hcl]` - Initialize configuration
+  - `clayup install <packages>` - Install development packages
+  - `clayup search <query>` - Search nixpkgs repository
+  - `clayup status` - Show clayup status
+- `claylinux` - ChromeOS Linux container setup (ChromeOS only)
+  - `claylinux init` - Quick development setup
+  - `claylinux desktop` - Install desktop environment
+  - `claylinux status` - Check container status
+- `clayrecovery` - ChromeOS recovery/modding tools (ChromeOS only)
+  - `clayrecovery info` - Device information
+  - `clayrecovery recovery` - Recovery mode status
+  - `clayrecovery firmware` - Firmware information
+  - `clayrecovery partitions` - Partition information
+- `clayvm` / `clay-box` - VirtualBox VM management
+  - `clayvm list` - List all VMs
+  - `clayvm start <vm>` - Start a VM
+  - `clayvm stop <vm>` - Stop a VM
+- `clayemu` - x86 emulator (browser-based)
+  - `clayemu status` - Check Clay Emulator availability
+- `claypod` - BrowserPod container runtime (Python, etc.)
+  - `claypod create [image]` - Create container
+  - `claypod list` - List all containers
+  - `claypod exec <containerId> <command>` - Execute command in container
+  - `claypod python <containerId> <code>` - Run Python code
+  - `claypod stop <containerId>` - Stop container
+  - `claypod remove <containerId>` - Remove container
+  - `claypod logs <containerId>` - Get container logs
+  - `claypod status` - Show status
+- `claypuppeteer` - Browser automation with Puppeteer
+  - `claypuppeteer launch [gui]` - Launch browser (headless or GUI)
+  - `claypuppeteer list` - List all browsers
+  - `claypuppeteer pages` - List all pages
+  - `claypuppeteer page create <browserId>` - Create new page
+  - `claypuppeteer page navigate <pageId> <url>` - Navigate to URL
+  - `claypuppeteer page screenshot <pageId>` - Take screenshot
+  - `claypuppeteer click <pageId> <selector>` - Click element
+  - `claypuppeteer type <pageId> <selector> <text>` - Type text
+  - `claypuppeteer eval <pageId> <script>` - Evaluate JavaScript
+  - `claypuppeteer analyze <pageId>` - Analyze page performance
+  - `claypuppeteer seo <pageId>` - Extract SEO data
+  - `claypuppeteer accessibility <pageId>` - Test accessibility
+  - `claypuppeteer scrape <pageId> <selectors>` - Scrape data with CSS selectors
+  - `claypuppeteer content <pageId>` - Extract structured content
+  - `claypuppeteer report <pageId>` - Generate comprehensive page report
+  - `claypuppeteer fill <pageId> <formData>` - Fill form automatically
+  - `claypuppeteer status` - Show status
 
 ## 🔒 Security
 
@@ -243,17 +259,17 @@ See LICENSE file for details.
 Clay Terminal integrates with several powerful tools and services:
 
 ### Development Tools
-- **[crosup](https://github.com/tsirysndr/crosup)** - Quick development environment setup for Chromebook/ChromeOS, macOS, and Linux
-- **[Chrostini-Initializers](https://github.com/francis-chris5/Chrostini-Initializers)** - Rapid ChromeOS Linux container setup scripts
+- **[Clayup](https://github.com/tsirysndr/crosup)** (based on crosup) - Quick development environment setup for Chromebook/ChromeOS, macOS, and Linux
+- **[Clay Linux](https://github.com/francis-chris5/Chrostini-Initializers)** (based on Chrostini-Initializers) - Rapid ChromeOS Linux container setup scripts
 
 ### Virtualization
-- **[VirtualBox](https://github.com/VirtualBox/virtualbox)** - Virtual machine management
-- **[v86](https://github.com/copy/v86)** - x86 PC emulator running in the browser
-- **[BrowserPod](https://github.com/leaningtech/browserpod-meta)** - Browser-based container runtime
-- **[Puppeteer](https://github.com/puppeteer/puppeteer)** - Browser automation (integrated with BrowserPod)
+- **[Clay VM](https://github.com/VirtualBox/virtualbox)** (based on VirtualBox) - Virtual machine management
+- **[Clay Emulator](https://github.com/copy/v86)** (based on v86) - x86 PC emulator running in the browser
+- **[Clay Pod](https://github.com/leaningtech/browserpod-meta)** (based on BrowserPod) - Browser-based container runtime for Python and other applications
+- **[Clay Puppeteer](https://github.com/puppeteer/puppeteer)** (based on Puppeteer) - Browser automation
 
 ### ChromeOS Tools
-- **[RecoMod](https://github.com/MercuryWorkshop/RecoMod)** - ChromeOS recovery and modding tools
+- **[Clay Recovery](https://github.com/MercuryWorkshop/RecoMod)** (based on RecoMod) - ChromeOS recovery and modding tools
 
 All integrations are accessible via terminal commands and work seamlessly with the bridge backend.
 
@@ -261,10 +277,10 @@ All integrations are accessible via terminal commands and work seamlessly with t
 
 - [xterm.js](https://xtermjs.org/) - Terminal emulator
 - [WebLLM](https://webllm.mlc.ai/) - Browser-based AI inference
-- [BrowserPod](https://github.com/leaningtech/browserpod-meta) - Inspiration for in-browser runtime
+- [BrowserPod](https://github.com/leaningtech/browserpod-meta) - Inspiration for in-browser runtime (integrated as Clay Browser)
 - [Puppeteer](https://github.com/puppeteer/puppeteer) - Browser automation library
-- [crosup](https://github.com/tsirysndr/crosup) - Development environment setup
-- [v86](https://github.com/copy/v86) - x86 emulation in browser
+- [crosup](https://github.com/tsirysndr/crosup) - Development environment setup (integrated as Clayup)
+- [v86](https://github.com/copy/v86) - x86 emulation in browser (integrated as Clay Emulator)
 
 ## 🐛 Troubleshooting
 

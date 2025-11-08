@@ -23,14 +23,15 @@ import { getEnhancedBridge } from './enhanced-bridge';
 import { ErrorHandler } from './utils/error-handler';
 import { ensureAsyncValue, safeQuerySelector } from './utils/resilience';
 import './components/chromeos-gate'; // Import ChromeOS gate to initialize it
-import { 
-  crosupIntegration, 
-  chrostiniIntegration, 
-  virtualBoxIntegration, 
-  recomodIntegration,
-  browserPodIntegration,
-  v86Utils,
-  V86Emulator,
+import {
+  clayupIntegration,
+  clayLinuxIntegration,
+  clayVMIntegration,
+  clayRecoveryIntegration,
+  clayPodIntegration,
+  clayPuppeteerIntegration,
+  clayEmulatorUtils,
+  ClayEmulator,
   type BackendInterface
 } from './integrations';
 import { fileManager } from './components/file-manager';
@@ -2143,15 +2144,15 @@ echo $! > /tmp/clay-bridge.pid
   }
 
   // Integration Command Handlers
-  private async handleCrosupCommand(command: string): Promise<void> {
+  private async handleClayupCommand(command: string): Promise<void> {
     if (!this.backend) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for crosup commands.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for clayup commands.\r\n');
       return;
     }
 
     // Ensure integration has backend (should already be set, but ensure it)
-    if (!crosupIntegration.getStatus().available) {
-      crosupIntegration.setBackend(this.backend as BackendInterface);
+    if (!clayupIntegration.getStatus().available) {
+      clayupIntegration.setBackend(this.backend as BackendInterface);
     }
     
     const args = command.substring(7).trim().split(' ');
@@ -2161,58 +2162,58 @@ echo $! > /tmp/clay-bridge.pid
       switch (subcommand) {
         case 'init':
           const format = args[1] === 'hcl' ? 'hcl' : 'toml';
-          this.terminal.write(`\r\n\x1b[36m[Crosup]\x1b[0m Initializing configuration (${format})...\r\n`);
-          const initResult = await crosupIntegration.initConfig(format);
+          this.terminal.write(`\r\n\x1b[36m[Clayup]\x1b[0m Initializing configuration (${format})...\r\n`);
+          const initResult = await clayupIntegration.initConfig(format);
           this.terminal.write(initResult.output);
           break;
 
         case 'install':
           const packages = args.slice(1).filter(p => p);
           if (packages.length === 0) {
-            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m crosup install <package1> [package2] ...\r\n');
-            this.terminal.write('\x1b[36m[Example]\x1b[0m crosup install vim git docker\r\n');
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m clayup install <package1> [package2] ...\r\n');
+            this.terminal.write('\x1b[36m[Example]\x1b[0m clayup install vim git docker\r\n');
             return;
           }
-          this.terminal.write(`\r\n\x1b[36m[Crosup]\x1b[0m Installing packages: ${packages.join(', ')}...\r\n`);
-          const installResult = await crosupIntegration.installPackages(packages);
+          this.terminal.write(`\r\n\x1b[36m[Clayup]\x1b[0m Installing packages: ${packages.join(', ')}...\r\n`);
+          const installResult = await clayupIntegration.installPackages(packages);
           this.terminal.write(installResult.output);
           break;
 
         case 'add':
           if (args.length < 2) {
-            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m crosup add <package>\r\n');
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m clayup add <package>\r\n');
             return;
           }
-          this.terminal.write(`\r\n\x1b[36m[Crosup]\x1b[0m Adding package: ${args[1]}...\r\n`);
-          const addResult = await crosupIntegration.addPackage(args[1]);
+          this.terminal.write(`\r\n\x1b[36m[Clayup]\x1b[0m Adding package: ${args[1]}...\r\n`);
+          const addResult = await clayupIntegration.addPackage(args[1]);
           this.terminal.write(addResult.output);
           break;
 
         case 'search':
           if (args.length < 2) {
-            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m crosup search <query>\r\n');
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m clayup search <query>\r\n');
             return;
           }
-          this.terminal.write(`\r\n\x1b[36m[Crosup]\x1b[0m Searching for: ${args.slice(1).join(' ')}...\r\n`);
-          const searchResult = await crosupIntegration.searchPackage(args.slice(1).join(' '));
+          this.terminal.write(`\r\n\x1b[36m[Clayup]\x1b[0m Searching for: ${args.slice(1).join(' ')}...\r\n`);
+          const searchResult = await clayupIntegration.searchPackage(args.slice(1).join(' '));
           this.terminal.write(searchResult.output);
           break;
 
         case 'diff':
-          this.terminal.write('\r\n\x1b[36m[Crosup]\x1b[0m Showing configuration diff...\r\n');
-          const diffResult = await crosupIntegration.showDiff();
+          this.terminal.write('\r\n\x1b[36m[Clayup]\x1b[0m Showing configuration diff...\r\n');
+          const diffResult = await clayupIntegration.showDiff();
           this.terminal.write(diffResult.output);
           break;
 
         case 'history':
-          this.terminal.write('\r\n\x1b[36m[Crosup]\x1b[0m Showing configuration history...\r\n');
-          const historyResult = await crosupIntegration.showHistory();
+          this.terminal.write('\r\n\x1b[36m[Clayup]\x1b[0m Showing configuration history...\r\n');
+          const historyResult = await clayupIntegration.showHistory();
           this.terminal.write(historyResult.output);
           break;
 
         case 'status':
-          const status = crosupIntegration.getStatus();
-          this.terminal.write(`\r\n\x1b[36m[Crosup Status]\x1b[0m\r\n`);
+          const status = clayupIntegration.getStatus();
+          this.terminal.write(`\r\n\x1b[36m[Clayup Status]\x1b[0m\r\n`);
           this.terminal.write(`  Available: ${status.available ? 'Yes' : 'No'}\r\n`);
           if (status.version) {
             this.terminal.write(`  Version: ${status.version}\r\n`);
@@ -2220,33 +2221,33 @@ echo $! > /tmp/clay-bridge.pid
           break;
 
         default:
-          this.terminal.write('\r\n\x1b[33m[Crosup Commands]\x1b[0m\r\n');
-          this.terminal.write('  crosup init [toml|hcl]  - Initialize configuration\r\n');
-          this.terminal.write('  crosup install <pkgs>    - Install packages\r\n');
-          this.terminal.write('  crosup add <pkg>         - Add package to config\r\n');
-          this.terminal.write('  crosup search <query>    - Search nixpkgs\r\n');
-          this.terminal.write('  crosup diff              - Show config diff\r\n');
-          this.terminal.write('  crosup history           - Show config history\r\n');
-          this.terminal.write('  crosup status            - Show status\r\n');
+          this.terminal.write('\r\n\x1b[33m[Clayup Commands]\x1b[0m\r\n');
+          this.terminal.write('  clayup init [toml|hcl]  - Initialize configuration\r\n');
+          this.terminal.write('  clayup install <pkgs>    - Install packages\r\n');
+          this.terminal.write('  clayup add <pkg>         - Add package to config\r\n');
+          this.terminal.write('  clayup search <query>    - Search nixpkgs\r\n');
+          this.terminal.write('  clayup diff              - Show config diff\r\n');
+          this.terminal.write('  clayup history           - Show config history\r\n');
+          this.terminal.write('  clayup status            - Show status\r\n');
       }
     } catch (error: any) {
       this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
     }
   }
 
-  private async handleChrostiniCommand(command: string): Promise<void> {
+  private async handleClayLinuxCommand(command: string): Promise<void> {
     if (!this.isChromeOS) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Chrostini commands are only available on ChromeOS.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Clay Linux commands are only available on ChromeOS.\r\n');
       return;
     }
 
     if (!this.backend) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for Chrostini commands.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for Clay Linux commands.\r\n');
       return;
     }
 
     // Ensure integration has backend
-    chrostiniIntegration.setBackend(this.backend as BackendInterface);
+    clayLinuxIntegration.setBackend(this.backend as BackendInterface);
     
     const args = command.substring(10).trim().split(' ');
     const subcommand = args[0] || 'help';
@@ -2255,102 +2256,100 @@ echo $! > /tmp/clay-bridge.pid
       switch (subcommand) {
         case 'init':
         case 'setup':
-          this.terminal.write('\r\n\x1b[36m[Chrostini]\x1b[0m Initializing Linux container...\r\n');
-          const initResult = await chrostiniIntegration.quickSetup();
+          this.terminal.write('\r\n\x1b[36m[Clay Linux]\x1b[0m Initializing Linux container...\r\n');
+          const initResult = await clayLinuxIntegration.quickSetup();
           this.terminal.write(initResult.output);
           break;
 
         case 'desktop':
-          this.terminal.write('\r\n\x1b[36m[Chrostini]\x1b[0m Installing desktop environment...\r\n');
-          const desktopResult = await chrostiniIntegration.installDesktop();
+          this.terminal.write('\r\n\x1b[36m[Clay Linux]\x1b[0m Installing desktop environment...\r\n');
+          const desktopResult = await clayLinuxIntegration.installDesktop();
           this.terminal.write(desktopResult.output);
           break;
 
         case 'update':
-          this.terminal.write('\r\n\x1b[36m[Chrostini]\x1b[0m Updating Linux container...\r\n');
-          const updateResult = await chrostiniIntegration.update();
+          this.terminal.write('\r\n\x1b[36m[Clay Linux]\x1b[0m Updating Linux container...\r\n');
+          const updateResult = await clayLinuxIntegration.update();
           this.terminal.write(updateResult.output);
           break;
 
         case 'install':
           if (args.length < 2) {
-            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m chrostini install <package>\r\n');
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m claylinux install <package>\r\n');
             return;
           }
-          this.terminal.write(`\r\n\x1b[36m[Chrostini]\x1b[0m Installing: ${args[1]}...\r\n`);
-          const installResult = await chrostiniIntegration.installPackage(args[1]);
+          this.terminal.write(`\r\n\x1b[36m[Clay Linux]\x1b[0m Installing: ${args[1]}...\r\n`);
+          const installResult = await clayLinuxIntegration.installPackage(args[1]);
           this.terminal.write(installResult.output);
           break;
 
         case 'status':
-          this.terminal.write('\r\n\x1b[36m[Chrostini]\x1b[0m Checking container status...\r\n');
-          const statusResult = await chrostiniIntegration.checkStatus();
+          this.terminal.write('\r\n\x1b[36m[Clay Linux]\x1b[0m Checking container status...\r\n');
+          const statusResult = await clayLinuxIntegration.checkStatus();
           this.terminal.write(statusResult.output);
           break;
 
         default:
-          this.terminal.write('\r\n\x1b[33m[Chrostini Commands]\x1b[0m\r\n');
-          this.terminal.write('  chrostini init/setup     - Quick setup\r\n');
-          this.terminal.write('  chrostini desktop        - Install desktop\r\n');
-          this.terminal.write('  chrostini update         - Update container\r\n');
-          this.terminal.write('  chrostini install <pkg>  - Install package\r\n');
-          this.terminal.write('  chrostini status        - Check status\r\n');
+          this.terminal.write('\r\n\x1b[33m[Clay Linux Commands]\x1b[0m\r\n');
+          this.terminal.write('  claylinux init/setup     - Quick setup\r\n');
+          this.terminal.write('  claylinux desktop        - Install desktop\r\n');
+          this.terminal.write('  claylinux update         - Update container\r\n');
+          this.terminal.write('  claylinux install <pkg>  - Install package\r\n');
+          this.terminal.write('  claylinux status        - Check status\r\n');
       }
     } catch (error: any) {
       this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
     }
   }
 
-  private async handleVirtualBoxCommand(command: string): Promise<void> {
+  private async handleClayVMCommand(command: string): Promise<void> {
     if (!this.backend) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for VirtualBox commands.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for Clay VM commands.\r\n');
       return;
     }
 
     // Ensure integration has backend
-    virtualBoxIntegration.setBackend(this.backend as BackendInterface);
+    clayVMIntegration.setBackend(this.backend as BackendInterface);
     
-    const cmd = command.startsWith('vbox ') ? command.substring(5) : command.substring(11);
+    const cmd = command.startsWith('clayvm ') ? command.substring(7) : command.substring(11);
     const args = cmd.trim().split(' ');
     const subcommand = args[0];
 
     try {
       switch (subcommand) {
         case 'list':
-          this.terminal.write('\r\n\x1b[36m[VirtualBox]\x1b[0m Listing VMs...\r\n');
-          const vms = await virtualBoxIntegration.listVMs();
-          if (vms.length === 0) {
-            this.terminal.write('  No VMs found\r\n');
+          this.terminal.write('\r\n\x1b[36m[Clay VM]\x1b[0m Listing VMs...\r\n');
+          const vmsResult = await clayVMIntegration.listVMs();
+          if (vmsResult.success && vmsResult.output) {
+            this.terminal.write(vmsResult.output);
           } else {
-            vms.forEach(vm => {
-              this.terminal.write(`  ${vm.name} (${vm.uuid.substring(0, 8)}...) - ${vm.state}\r\n`);
-            });
+            this.terminal.write('  No VMs found\r\n');
           }
           break;
 
         case 'start':
           if (args.length < 2) {
-            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m vbox start <vm-name-or-uuid>\r\n');
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m clayvm start <vm-name-or-uuid> [headless]\r\n');
             return;
           }
-          this.terminal.write(`\r\n\x1b[36m[VirtualBox]\x1b[0m Starting VM: ${args[1]}...\r\n`);
-          const startResult = await virtualBoxIntegration.startVM(args[1], args[2] === 'headless');
+          this.terminal.write(`\r\n\x1b[36m[Clay VM]\x1b[0m Starting VM: ${args[1]}...\r\n`);
+          const startResult = await clayVMIntegration.startVM(args[1], args[2] === 'headless');
           this.terminal.write(startResult.output);
           break;
 
         case 'stop':
           if (args.length < 2) {
-            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m vbox stop <vm-name-or-uuid> [force]\r\n');
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m clayvm stop <vm-name-or-uuid> [force]\r\n');
             return;
           }
-          this.terminal.write(`\r\n\x1b[36m[VirtualBox]\x1b[0m Stopping VM: ${args[1]}...\r\n`);
-          const stopResult = await virtualBoxIntegration.stopVM(args[1], args[2] === 'force');
+          this.terminal.write(`\r\n\x1b[36m[Clay VM]\x1b[0m Stopping VM: ${args[1]}...\r\n`);
+          const stopResult = await clayVMIntegration.stopVM(args[1], args[2] === 'force');
           this.terminal.write(stopResult.output);
           break;
 
         case 'status':
-          const status = virtualBoxIntegration.getStatus();
-          this.terminal.write(`\r\n\x1b[36m[VirtualBox Status]\x1b[0m\r\n`);
+          const status = clayVMIntegration.getStatus();
+          this.terminal.write(`\r\n\x1b[36m[Clay VM Status]\x1b[0m\r\n`);
           this.terminal.write(`  Available: ${status.available ? 'Yes' : 'No'}\r\n`);
           if (status.version) {
             this.terminal.write(`  Version: ${status.version}\r\n`);
@@ -2358,120 +2357,231 @@ echo $! > /tmp/clay-bridge.pid
           break;
 
         default:
-          this.terminal.write('\r\n\x1b[33m[VirtualBox Commands]\x1b[0m\r\n');
-          this.terminal.write('  vbox list                - List all VMs\r\n');
-          this.terminal.write('  vbox start <vm>          - Start VM\r\n');
-          this.terminal.write('  vbox stop <vm> [force]   - Stop VM\r\n');
-          this.terminal.write('  vbox status             - Show status\r\n');
+          this.terminal.write('\r\n\x1b[33m[Clay VM Commands]\x1b[0m\r\n');
+          this.terminal.write('  clayvm list                - List all VMs\r\n');
+          this.terminal.write('  clayvm start <vm>          - Start VM\r\n');
+          this.terminal.write('  clayvm stop <vm> [force]   - Stop VM\r\n');
+          this.terminal.write('  clayvm status             - Show status\r\n');
       }
     } catch (error: any) {
       this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
     }
   }
 
-  private async handleRecoModCommand(command: string): Promise<void> {
+  private async handleClayRecoveryCommand(command: string): Promise<void> {
     if (!this.isChromeOS) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m RecoMod commands are only available on ChromeOS.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Clay Recovery commands are only available on ChromeOS.\r\n');
       return;
     }
 
     if (!this.backend) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for RecoMod commands.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for Clay Recovery commands.\r\n');
       return;
     }
 
     // Ensure integration has backend
-    recomodIntegration.setBackend(this.backend as BackendInterface);
+    clayRecoveryIntegration.setBackend(this.backend as BackendInterface);
     
-    const args = command.substring(8).trim().split(' ');
+    const args = command.substring(12).trim().split(' ');
     const subcommand = args[0] || 'info';
 
     try {
       switch (subcommand) {
         case 'info':
         case 'device':
-          this.terminal.write('\r\n\x1b[36m[RecoMod]\x1b[0m Getting device information...\r\n');
-          const infoResult = await recomodIntegration.getDeviceInfo();
+          this.terminal.write('\r\n\x1b[36m[Clay Recovery]\x1b[0m Getting device information...\r\n');
+          const infoResult = await clayRecoveryIntegration.getDeviceInfo();
           this.terminal.write(infoResult.output);
           break;
 
         case 'recovery':
-          this.terminal.write('\r\n\x1b[36m[RecoMod]\x1b[0m Checking recovery mode...\r\n');
-          const recoveryResult = await recomodIntegration.checkRecoveryMode();
+          this.terminal.write('\r\n\x1b[36m[Clay Recovery]\x1b[0m Checking recovery mode...\r\n');
+          const recoveryResult = await clayRecoveryIntegration.checkRecoveryMode();
           this.terminal.write(recoveryResult.output);
           break;
 
         case 'firmware':
         case 'fw':
-          this.terminal.write('\r\n\x1b[36m[RecoMod]\x1b[0m Getting firmware information...\r\n');
-          const fwResult = await recomodIntegration.getFirmwareInfo();
+          this.terminal.write('\r\n\x1b[36m[Clay Recovery]\x1b[0m Getting firmware information...\r\n');
+          const fwResult = await clayRecoveryIntegration.getFirmwareInfo();
           this.terminal.write(fwResult.output);
           break;
 
         case 'dev':
         case 'developer':
-          this.terminal.write('\r\n\x1b[36m[RecoMod]\x1b[0m Checking developer mode...\r\n');
-          const devResult = await recomodIntegration.checkDeveloperMode();
+          this.terminal.write('\r\n\x1b[36m[Clay Recovery]\x1b[0m Checking developer mode...\r\n');
+          const devResult = await clayRecoveryIntegration.checkDeveloperMode();
           this.terminal.write(devResult.output);
           break;
 
         case 'partitions':
         case 'parts':
-          this.terminal.write('\r\n\x1b[36m[RecoMod]\x1b[0m Getting partition information...\r\n');
-          const partResult = await recomodIntegration.getPartitionInfo();
+          this.terminal.write('\r\n\x1b[36m[Clay Recovery]\x1b[0m Getting partition information...\r\n');
+          const partResult = await clayRecoveryIntegration.getPartitionInfo();
           this.terminal.write(partResult.output);
           break;
 
         default:
-          this.terminal.write('\r\n\x1b[33m[RecoMod Commands]\x1b[0m\r\n');
-          this.terminal.write('  recomod info/device      - Device information\r\n');
-          this.terminal.write('  recomod recovery        - Recovery mode status\r\n');
-          this.terminal.write('  recomod firmware/fw     - Firmware info\r\n');
-          this.terminal.write('  recomod dev/developer   - Developer mode\r\n');
-          this.terminal.write('  recomod partitions/parts - Partition info\r\n');
+          this.terminal.write('\r\n\x1b[33m[Clay Recovery Commands]\x1b[0m\r\n');
+          this.terminal.write('  clayrecovery info/device      - Device information\r\n');
+          this.terminal.write('  clayrecovery recovery        - Recovery mode status\r\n');
+          this.terminal.write('  clayrecovery firmware/fw     - Firmware info\r\n');
+          this.terminal.write('  clayrecovery dev/developer   - Developer mode\r\n');
+          this.terminal.write('  clayrecovery partitions/parts - Partition info\r\n');
       }
     } catch (error: any) {
       this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
     }
   }
 
-  private async handleV86Command(command: string): Promise<void> {
-    const args = command.substring(4).trim().split(' ');
-    const subcommand = args[0] || 'help';
-
-    try {
-      switch (subcommand) {
-        case 'status':
-          const available = v86Utils.isAvailable();
-          this.terminal.write(`\r\n\x1b[36m[v86 Status]\x1b[0m\r\n`);
-          this.terminal.write(`  Available: ${available ? 'Yes' : 'No'}\r\n`);
-          if (!available) {
-            this.terminal.write('  Note: v86 library will be loaded when needed\r\n');
-          }
-          break;
-
-        default:
-          this.terminal.write('\r\n\x1b[33m[v86 Commands]\x1b[0m\r\n');
-          this.terminal.write('  v86 status              - Check v86 availability\r\n');
-          this.terminal.write('\r\n\x1b[36m[Note]\x1b[0m v86 emulator integration is available.\r\n');
-          this.terminal.write('  Use v86.createEmulator() in code to create instances.\r\n');
-      }
-    } catch (error: any) {
-      this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
-    }
-  }
-
-  private async handleBrowserPodCommand(command: string): Promise<void> {
+  private async handleClayPodCommand(command: string): Promise<void> {
     if (!this.backend) {
-      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for BrowserPod/Puppeteer commands.\r\n');
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for Clay Pod commands.\r\n');
       this.writePrompt();
       return;
     }
 
     // Ensure integration has backend
-    browserPodIntegration.setBackend(this.backend as BackendInterface);
+    clayPodIntegration.setBackend(this.backend as BackendInterface);
+    
+    const args = command.substring(8).trim().split(' ');
+    const subcommand = args[0] || 'help';
 
-    const args = command.substring(11).trim().split(' ');
+    try {
+      switch (subcommand) {
+        case 'create':
+          this.terminal.write('\r\n\x1b[36m[Clay Pod]\x1b[0m Creating container...\r\n');
+          const image = args[1] || 'python:latest';
+          const createResult = await clayPodIntegration.createContainer({ image });
+          this.terminal.write(createResult.output + '\r\n');
+          if (createResult.success && createResult.containerId) {
+            this.terminal.write(`\x1b[32m[✓]\x1b[0m Container ID: ${createResult.containerId}\r\n`);
+          }
+          break;
+
+        case 'list':
+          this.terminal.write('\r\n\x1b[36m[Clay Pod]\x1b[0m Listing containers...\r\n');
+          const listResult = await clayPodIntegration.listContainers();
+          if (listResult.success && listResult.containers.length > 0) {
+            listResult.containers.forEach(container => {
+              this.terminal.write(`  ${container.containerId} - ${container.image} (${container.status})\r\n`);
+            });
+          } else {
+            this.terminal.write('  No containers running\r\n');
+          }
+          break;
+
+        case 'exec':
+          if (args.length < 3) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m claypod exec <containerId> <command> [args...]\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Clay Pod]\x1b[0m Executing command in container: ${args[1]}...\r\n`);
+          const execResult = await clayPodIntegration.execInContainer(args[1], args.slice(2));
+          this.terminal.write(execResult.output + '\r\n');
+          break;
+
+        case 'python':
+          if (args.length < 3) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m claypod python <containerId> <code>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Clay Pod]\x1b[0m Running Python code...\r\n`);
+          const pythonResult = await clayPodIntegration.runPython(args[1], args.slice(2).join(' '));
+          this.terminal.write(pythonResult.output + '\r\n');
+          break;
+
+        case 'stop':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m claypod stop <containerId>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Clay Pod]\x1b[0m Stopping container: ${args[1]}...\r\n`);
+          const stopResult = await clayPodIntegration.stopContainer(args[1]);
+          this.terminal.write(stopResult.output + '\r\n');
+          break;
+
+        case 'remove':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m claypod remove <containerId>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Clay Pod]\x1b[0m Removing container: ${args[1]}...\r\n`);
+          const removeResult = await clayPodIntegration.removeContainer(args[1]);
+          this.terminal.write(removeResult.output + '\r\n');
+          break;
+
+        case 'logs':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m claypod logs <containerId> [tail]\r\n');
+            break;
+          }
+          const tail = args[2] ? parseInt(args[2], 10) : 100;
+          this.terminal.write(`\r\n\x1b[36m[Clay Pod]\x1b[0m Getting logs for container: ${args[1]}...\r\n`);
+          const logsResult = await clayPodIntegration.getContainerLogs(args[1], tail);
+          this.terminal.write(logsResult.output + '\r\n');
+          break;
+
+        case 'status':
+          const status = clayPodIntegration.getStatus();
+          this.terminal.write(`\r\n\x1b[36m[Clay Pod Status]\x1b[0m\r\n`);
+          this.terminal.write(`  Available: ${status.available ? 'Yes' : 'No'}\r\n`);
+          this.terminal.write(`  Containers: ${status.containers}\r\n`);
+          break;
+
+        default:
+          this.terminal.write('\r\n\x1b[33m[Clay Pod Commands]\x1b[0m\r\n');
+          this.terminal.write('  claypod create [image]     - Create container\r\n');
+          this.terminal.write('  claypod list               - List containers\r\n');
+          this.terminal.write('  claypod exec <id> <cmd>     - Execute command in container\r\n');
+          this.terminal.write('  claypod python <id> <code> - Run Python code\r\n');
+          this.terminal.write('  claypod stop <id>          - Stop container\r\n');
+          this.terminal.write('  claypod remove <id>        - Remove container\r\n');
+          this.terminal.write('  claypod logs <id> [tail]   - Get container logs\r\n');
+          this.terminal.write('  claypod status             - Show status\r\n');
+      }
+    } catch (error: any) {
+      this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
+    }
+  }
+
+  private async handleClayEmuCommand(command: string): Promise<void> {
+    const args = command.substring(8).trim().split(' ');
+    const subcommand = args[0] || 'help';
+
+    try {
+      switch (subcommand) {
+        case 'status':
+          const available = clayEmulatorUtils.isAvailable();
+          this.terminal.write(`\r\n\x1b[36m[Clay Emulator Status]\x1b[0m\r\n`);
+          this.terminal.write(`  Available: ${available ? 'Yes' : 'No'}\r\n`);
+          if (!available) {
+            this.terminal.write('  Note: Clay Emulator library will be loaded when needed\r\n');
+          }
+          break;
+
+        default:
+          this.terminal.write('\r\n\x1b[33m[Clay Emulator Commands]\x1b[0m\r\n');
+          this.terminal.write('  clayemu status              - Check Clay Emulator availability\r\n');
+          this.terminal.write('\r\n\x1b[36m[Note]\x1b[0m Clay Emulator integration is available.\r\n');
+          this.terminal.write('  Use ClayEmulator.createEmulator() in code to create instances.\r\n');
+      }
+    } catch (error: any) {
+      this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
+    }
+  }
+
+  private async handleClayPuppeteerCommand(command: string): Promise<void> {
+    if (!this.backend) {
+      this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Bridge backend required for Puppeteer commands.\r\n');
+      this.writePrompt();
+      return;
+    }
+
+    // Ensure integration has backend
+    clayPuppeteerIntegration.setBackend(this.backend as BackendInterface);
+    
+    const args = command.substring(14).trim().split(' ');
     const subcommand = args[0] || 'help';
 
     try {
@@ -2479,7 +2589,7 @@ echo $! > /tmp/clay-bridge.pid
         case 'launch':
           const headless = args[1] !== 'gui';
           this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Launching browser (${headless ? 'headless' : 'GUI'})...\r\n`);
-          const launchResult = await browserPodIntegration.launchBrowser(headless);
+          const launchResult = await clayPuppeteerIntegration.launchBrowser(headless);
           this.terminal.write(launchResult.output + '\r\n');
           if (launchResult.success && launchResult.browserId) {
             this.terminal.write(`\x1b[32m[✓]\x1b[0m Browser ID: ${launchResult.browserId}\r\n`);
@@ -2492,14 +2602,14 @@ echo $! > /tmp/clay-bridge.pid
             break;
           }
           this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Closing browser: ${args[1]}...\r\n`);
-          const closeResult = await browserPodIntegration.closeBrowser(args[1]);
+          const closeResult = await clayPuppeteerIntegration.closeBrowser(args[1]);
           this.terminal.write(closeResult.output + '\r\n');
           break;
 
         case 'list':
         case 'browsers':
           this.terminal.write('\r\n\x1b[36m[Puppeteer]\x1b[0m Listing browsers...\r\n');
-          const browsersResult = await browserPodIntegration.listBrowsers();
+          const browsersResult = await clayPuppeteerIntegration.listBrowsers();
           if (browsersResult.success && browsersResult.browsers.length > 0) {
             browsersResult.browsers.forEach(browser => {
               this.terminal.write(`  ${browser.browserId} - ${browser.connected ? 'Connected' : 'Disconnected'} (${browser.pages.length} pages)\r\n`);
@@ -2521,7 +2631,7 @@ echo $! > /tmp/clay-bridge.pid
               break;
             }
             this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Creating page in browser: ${args[2]}...\r\n`);
-            const pageResult = await browserPodIntegration.createPage(args[2]);
+            const pageResult = await clayPuppeteerIntegration.createPage(args[2]);
             this.terminal.write(pageResult.output + '\r\n');
             if (pageResult.success && pageResult.pageId) {
               this.terminal.write(`\x1b[32m[✓]\x1b[0m Page ID: ${pageResult.pageId}\r\n`);
@@ -2532,7 +2642,7 @@ echo $! > /tmp/clay-bridge.pid
               break;
             }
             this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Navigating to: ${args[3]}...\r\n`);
-            const navResult = await browserPodIntegration.navigate(args[2], args[3]);
+            const navResult = await clayPuppeteerIntegration.navigate(args[2], args[3]);
             this.terminal.write(navResult.output + '\r\n');
           } else if (pageAction === 'screenshot') {
             if (args.length < 3) {
@@ -2540,7 +2650,7 @@ echo $! > /tmp/clay-bridge.pid
               break;
             }
             this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Taking screenshot...\r\n`);
-            const screenshotResult = await browserPodIntegration.screenshot(args[2]);
+            const screenshotResult = await clayPuppeteerIntegration.screenshot(args[2]);
             this.terminal.write(screenshotResult.output + '\r\n');
             if (screenshotResult.success && screenshotResult.screenshot) {
               this.terminal.write(`\x1b[32m[✓]\x1b[0m Screenshot taken (base64 encoded)\r\n`);
@@ -2551,14 +2661,14 @@ echo $! > /tmp/clay-bridge.pid
               break;
             }
             this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Closing page: ${args[2]}...\r\n`);
-            const closePageResult = await browserPodIntegration.closePage(args[2]);
+            const closePageResult = await clayPuppeteerIntegration.closePage(args[2]);
             this.terminal.write(closePageResult.output + '\r\n');
           }
           break;
 
         case 'pages':
           this.terminal.write('\r\n\x1b[36m[Puppeteer]\x1b[0m Listing pages...\r\n');
-          const pagesResult = await browserPodIntegration.listPages();
+          const pagesResult = await clayPuppeteerIntegration.listPages();
           if (pagesResult.success && pagesResult.pages.length > 0) {
             pagesResult.pages.forEach(page => {
               this.terminal.write(`  ${page.pageId} - ${page.url} (${page.title})\r\n`);
@@ -2574,7 +2684,7 @@ echo $! > /tmp/clay-bridge.pid
             break;
           }
           this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Clicking: ${args[2]}...\r\n`);
-          const clickResult = await browserPodIntegration.click(args[1], args[2]);
+          const clickResult = await clayPuppeteerIntegration.click(args[1], args[2]);
           this.terminal.write(clickResult.output + '\r\n');
           break;
 
@@ -2584,7 +2694,7 @@ echo $! > /tmp/clay-bridge.pid
             break;
           }
           this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Typing into: ${args[2]}...\r\n`);
-          const typeResult = await browserPodIntegration.type(args[1], args[2], args.slice(3).join(' '));
+          const typeResult = await clayPuppeteerIntegration.type(args[1], args[2], args.slice(3).join(' '));
           this.terminal.write(typeResult.output + '\r\n');
           break;
 
@@ -2595,34 +2705,157 @@ echo $! > /tmp/clay-bridge.pid
             break;
           }
           this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Evaluating script...\r\n`);
-          const evalResult = await browserPodIntegration.evaluate(args[1], args.slice(2).join(' '));
+          const evalResult = await clayPuppeteerIntegration.evaluate(args[1], args.slice(2).join(' '));
           this.terminal.write(evalResult.output + '\r\n');
           if (evalResult.success && evalResult.result !== undefined) {
             this.terminal.write(`\x1b[32m[Result]\x1b[0m ${JSON.stringify(evalResult.result)}\r\n`);
           }
           break;
 
+        case 'analyze':
+        case 'performance':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod analyze <pageId>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Analyzing performance...\r\n`);
+          const perfResult = await clayPuppeteerIntegration.analyzePerformance(args[1]);
+          this.terminal.write(perfResult.output + '\r\n');
+          if (perfResult.success && perfResult.metrics) {
+            this.terminal.write(`\x1b[32m[Metrics]\x1b[0m ${JSON.stringify(perfResult.metrics, null, 2)}\r\n`);
+          }
+          break;
+
+        case 'seo':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod seo <pageId>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Extracting SEO data...\r\n`);
+          const seoResult = await clayPuppeteerIntegration.extractSEO(args[1]);
+          this.terminal.write(seoResult.output + '\r\n');
+          if (seoResult.success && seoResult.seo) {
+            this.terminal.write(`\x1b[32m[SEO]\x1b[0m Title: ${seoResult.seo.title || 'N/A'}\r\n`);
+            this.terminal.write(`  Description: ${seoResult.seo.description || 'N/A'}\r\n`);
+            this.terminal.write(`  H1 tags: ${seoResult.seo.h1?.length || 0}\r\n`);
+          }
+          break;
+
+        case 'accessibility':
+        case 'a11y':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod accessibility <pageId>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Testing accessibility...\r\n`);
+          const a11yResult = await clayPuppeteerIntegration.testAccessibility(args[1]);
+          this.terminal.write(a11yResult.output + '\r\n');
+          if (a11yResult.success && a11yResult.accessibility) {
+            this.terminal.write(`\x1b[32m[Accessibility Score]\x1b[0m ${a11yResult.accessibility.score}/100\r\n`);
+            this.terminal.write(`  Issues found: ${a11yResult.accessibility.issues?.length || 0}\r\n`);
+          }
+          break;
+
+        case 'scrape':
+          if (args.length < 3) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod scrape <pageId> <selector1=key1,selector2=key2>\r\n`);
+            this.terminal.write('  Example: browserpod scrape page_1 "h1=title,.price=price"\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Scraping data...\r\n`);
+          const selectors: Record<string, string> = {};
+          args[2].split(',').forEach(pair => {
+            const [selector, key] = pair.split('=');
+            if (selector && key) selectors[key.trim()] = selector.trim();
+          });
+          const scrapeResult = await clayPuppeteerIntegration.scrape(args[1], selectors);
+          this.terminal.write(scrapeResult.output + '\r\n');
+          if (scrapeResult.success && scrapeResult.data) {
+            this.terminal.write(`\x1b[32m[Data]\x1b[0m ${JSON.stringify(scrapeResult.data, null, 2)}\r\n`);
+          }
+          break;
+
+        case 'content':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod content <pageId>\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Extracting content...\r\n`);
+          const contentResult = await clayPuppeteerIntegration.extractContent(args[1]);
+          this.terminal.write(contentResult.output + '\r\n');
+          if (contentResult.success && contentResult.content) {
+            const c = contentResult.content;
+            this.terminal.write(`\x1b[32m[Content]\x1b[0m\r\n`);
+            this.terminal.write(`  Headings: ${c.headings?.length || 0}\r\n`);
+            this.terminal.write(`  Paragraphs: ${c.paragraphs?.length || 0}\r\n`);
+            this.terminal.write(`  Lists: ${c.lists?.length || 0}\r\n`);
+            this.terminal.write(`  Tables: ${c.tables?.length || 0}\r\n`);
+          }
+          break;
+
+        case 'report':
+          if (args.length < 2) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod report <pageId> [url]\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Generating comprehensive report...\r\n`);
+          const reportResult = await clayPuppeteerIntegration.generateReport(args[1], args[2]);
+          this.terminal.write(reportResult.output + '\r\n');
+          if (reportResult.success && reportResult.report) {
+            this.terminal.write(`\x1b[32m[Report Generated]\x1b[0m\r\n`);
+            this.terminal.write(`  URL: ${reportResult.report.url}\r\n`);
+            this.terminal.write(`  Performance: ✓\r\n`);
+            this.terminal.write(`  SEO: ✓\r\n`);
+            this.terminal.write(`  Accessibility: ✓\r\n`);
+            this.terminal.write(`  Content: ✓\r\n`);
+          }
+          break;
+
+        case 'fill':
+        case 'form':
+          if (args.length < 3) {
+            this.terminal.write('\r\n\x1b[33m[Usage]\x1b[0m browserpod fill <pageId> <selector1=value1,selector2=value2>\r\n`);
+            this.terminal.write('  Example: browserpod fill page_1 "#email=test@example.com,#password=secret"\r\n');
+            break;
+          }
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer]\x1b[0m Filling form...\r\n`);
+          const formData: Record<string, string> = {};
+          args[2].split(',').forEach(pair => {
+            const [selector, value] = pair.split('=');
+            if (selector && value) formData[selector.trim()] = value.trim();
+          });
+          const fillResult = await clayPuppeteerIntegration.fillForm(args[1], formData);
+          this.terminal.write(fillResult.output + '\r\n');
+          break;
+
         case 'status':
-          const status = browserPodIntegration.getStatus();
-          this.terminal.write(`\r\n\x1b[36m[BrowserPod/Puppeteer Status]\x1b[0m\r\n`);
+          const status = clayPuppeteerIntegration.getStatus();
+          this.terminal.write(`\r\n\x1b[36m[Puppeteer Status]\x1b[0m\r\n`);
           this.terminal.write(`  Available: ${status.available ? 'Yes' : 'No'}\r\n`);
           this.terminal.write(`  Browsers: ${status.browsers}\r\n`);
           this.terminal.write(`  Pages: ${status.pages}\r\n`);
           break;
 
         default:
-          this.terminal.write('\r\n\x1b[33m[BrowserPod/Puppeteer Commands]\x1b[0m\r\n');
-          this.terminal.write('  browserpod launch [gui]   - Launch browser (headless or GUI)\r\n');
-          this.terminal.write('  browserpod close <id>     - Close browser\r\n');
-          this.terminal.write('  browserpod list           - List all browsers\r\n');
-          this.terminal.write('  browserpod pages          - List all pages\r\n');
-          this.terminal.write('  browserpod page create <browserId> - Create new page\r\n');
-          this.terminal.write('  browserpod page navigate <pageId> <url> - Navigate to URL\r\n');
-          this.terminal.write('  browserpod page screenshot <pageId> - Take screenshot\r\n');
-          this.terminal.write('  browserpod click <pageId> <selector> - Click element\r\n');
-          this.terminal.write('  browserpod type <pageId> <selector> <text> - Type text\r\n');
-          this.terminal.write('  browserpod eval <pageId> <script> - Evaluate JavaScript\r\n');
-          this.terminal.write('  browserpod status         - Show status\r\n');
+          this.terminal.write('\r\n\x1b[33m[Puppeteer Commands]\x1b[0m\r\n');
+          this.terminal.write('  claypuppeteer launch [gui]   - Launch browser (headless or GUI)\r\n');
+          this.terminal.write('  claypuppeteer close <id>     - Close browser\r\n');
+          this.terminal.write('  claypuppeteer list           - List all browsers\r\n');
+          this.terminal.write('  claypuppeteer pages          - List all pages\r\n');
+          this.terminal.write('  claypuppeteer page create <browserId> - Create new page\r\n');
+          this.terminal.write('  claypuppeteer page navigate <pageId> <url> - Navigate to URL\r\n');
+          this.terminal.write('  claypuppeteer page screenshot <pageId> - Take screenshot\r\n');
+          this.terminal.write('  claypuppeteer click <pageId> <selector> - Click element\r\n');
+          this.terminal.write('  claypuppeteer type <pageId> <selector> <text> - Type text\r\n');
+          this.terminal.write('  claypuppeteer eval <pageId> <script> - Evaluate JavaScript\r\n');
+          this.terminal.write('  claypuppeteer analyze <pageId> - Analyze performance\r\n');
+          this.terminal.write('  claypuppeteer seo <pageId> - Extract SEO data\r\n');
+          this.terminal.write('  claypuppeteer accessibility <pageId> - Test accessibility\r\n');
+          this.terminal.write('  claypuppeteer scrape <pageId> <selectors> - Scrape data\r\n');
+          this.terminal.write('  claypuppeteer content <pageId> - Extract content\r\n');
+          this.terminal.write('  claypuppeteer report <pageId> - Generate full report\r\n');
+          this.terminal.write('  claypuppeteer fill <pageId> <formData> - Fill form\r\n');
+          this.terminal.write('  claypuppeteer status - Show status\r\n');
       }
     } catch (error: any) {
       this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m ${error.message}\r\n`);
@@ -2713,11 +2946,12 @@ echo $! > /tmp/clay-bridge.pid
       fileManager.setBackend(this.backend);
       
       // Connect integrations to backend
-      crosupIntegration.setBackend(this.backend as BackendInterface);
-      chrostiniIntegration.setBackend(this.backend as BackendInterface);
-      virtualBoxIntegration.setBackend(this.backend as BackendInterface);
-      recomodIntegration.setBackend(this.backend as BackendInterface);
-      browserPodIntegration.setBackend(this.backend as BackendInterface);
+      clayupIntegration.setBackend(this.backend as BackendInterface);
+      clayLinuxIntegration.setBackend(this.backend as BackendInterface);
+      clayVMIntegration.setBackend(this.backend as BackendInterface);
+      clayRecoveryIntegration.setBackend(this.backend as BackendInterface);
+      clayPodIntegration.setBackend(this.backend as BackendInterface);
+      clayPuppeteerIntegration.setBackend(this.backend as BackendInterface);
 
       // Determine bridge type
       const bridgeType = enhancedBridge.getBridgeType();
@@ -3371,35 +3605,43 @@ echo $! > /tmp/clay-bridge.pid
       this.terminal.write(`\x1b[33m═══════════════════════════════════════════════════════════════\x1b[0m\r\n`);
       this.terminal.write(`\x1b[33m INTEGRATION COMMANDS\x1b[0m\r\n`);
       this.terminal.write(`\x1b[33m═══════════════════════════════════════════════════════════════\x1b[0m\r\n`);
-      this.terminal.write(`  \x1b[32mcrosup\x1b[0m        - Development environment setup (crosup)\r\n`);
-      this.terminal.write(`    crosup init [toml|hcl]  - Initialize configuration\r\n`);
-      this.terminal.write(`    crosup install <pkgs>   - Install packages\r\n`);
-      this.terminal.write(`    crosup search <query>     - Search nixpkgs\r\n`);
-      this.terminal.write(`    crosup status            - Show status\r\n`);
+      this.terminal.write(`  \x1b[32mclayup\x1b[0m        - Development environment setup\r\n`);
+      this.terminal.write(`    clayup init [toml|hcl]  - Initialize configuration\r\n`);
+      this.terminal.write(`    clayup install <pkgs>   - Install packages\r\n`);
+      this.terminal.write(`    clayup search <query>     - Search nixpkgs\r\n`);
+      this.terminal.write(`    clayup status            - Show status\r\n`);
       if (this.isChromeOS) {
-        this.terminal.write(`  \x1b[32mchrostini\x1b[0m      - ChromeOS Linux container setup\r\n`);
-        this.terminal.write(`    chrostini init         - Quick setup\r\n`);
-        this.terminal.write(`    chrostini desktop      - Install desktop\r\n`);
-        this.terminal.write(`    chrostini status       - Check status\r\n`);
-        this.terminal.write(`  \x1b[32mrecomod\x1b[0m        - ChromeOS recovery/modding tools\r\n`);
-        this.terminal.write(`    recomod info          - Device information\r\n`);
-        this.terminal.write(`    recomod recovery      - Recovery mode status\r\n`);
-        this.terminal.write(`    recomod firmware      - Firmware info\r\n`);
-        this.terminal.write(`    recomod partitions    - Partition info\r\n`);
+        this.terminal.write(`  \x1b[32mclaylinux\x1b[0m      - ChromeOS Linux container setup\r\n`);
+        this.terminal.write(`    claylinux init         - Quick setup\r\n`);
+        this.terminal.write(`    claylinux desktop      - Install desktop\r\n`);
+        this.terminal.write(`    claylinux status       - Check status\r\n`);
+        this.terminal.write(`  \x1b[32mclayrecovery\x1b[0m        - ChromeOS recovery/modding tools\r\n`);
+        this.terminal.write(`    clayrecovery info          - Device information\r\n`);
+        this.terminal.write(`    clayrecovery recovery      - Recovery mode status\r\n`);
+        this.terminal.write(`    clayrecovery firmware      - Firmware info\r\n`);
+        this.terminal.write(`    clayrecovery partitions    - Partition info\r\n`);
       }
-      this.terminal.write(`  \x1b[32mvbox\x1b[0m / \x1b[32mvirtualbox\x1b[0m - VirtualBox VM management\r\n`);
-      this.terminal.write(`    vbox list               - List all VMs\r\n`);
-      this.terminal.write(`    vbox start <vm>         - Start VM\r\n`);
-      this.terminal.write(`    vbox stop <vm>          - Stop VM\r\n`);
-      this.terminal.write(`  \x1b[32mv86\x1b[0m            - x86 emulator (browser-based)\r\n`);
-      this.terminal.write(`    v86 status             - Check availability\r\n`);
-      this.terminal.write(`  \x1b[32mbrowserpod\x1b[0m      - Browser automation (Puppeteer)\r\n`);
-      this.terminal.write(`    browserpod launch      - Launch browser\r\n`);
-      this.terminal.write(`    browserpod list        - List browsers\r\n`);
-      this.terminal.write(`    browserpod page create - Create page\r\n`);
-      this.terminal.write(`    browserpod page navigate - Navigate to URL\r\n`);
-      this.terminal.write(`    browserpod click       - Click element\r\n`);
-      this.terminal.write(`    browserpod eval        - Evaluate JavaScript\r\n`);
+      this.terminal.write(`  \x1b[32mclayvm\x1b[0m / \x1b[32mclay-box\x1b[0m - VirtualBox VM management\r\n`);
+      this.terminal.write(`    clayvm list               - List all VMs\r\n`);
+      this.terminal.write(`    clayvm start <vm>         - Start VM\r\n`);
+      this.terminal.write(`    clayvm stop <vm>          - Stop VM\r\n`);
+      this.terminal.write(`  \x1b[32mclayemu\x1b[0m            - x86 emulator (browser-based)\r\n`);
+      this.terminal.write(`    clayemu status             - Check availability\r\n`);
+      this.terminal.write(`  \x1b[32mclaypod\x1b[0m           - BrowserPod container runtime (Python, etc.)\r\n`);
+      this.terminal.write(`    claypod create [image]  - Create container\r\n`);
+      this.terminal.write(`    claypod list            - List containers\r\n`);
+      this.terminal.write(`    claypod exec <id> <cmd> - Execute command\r\n`);
+      this.terminal.write(`    claypod python <id> <code> - Run Python code\r\n`);
+      this.terminal.write(`  \x1b[32mclaypuppeteer\x1b[0m      - Browser automation (Puppeteer)\r\n`);
+      this.terminal.write(`    claypuppeteer launch    - Launch browser\r\n`);
+      this.terminal.write(`    claypuppeteer list      - List browsers\r\n`);
+      this.terminal.write(`    claypuppeteer page create - Create page\r\n`);
+      this.terminal.write(`    claypuppeteer page navigate - Navigate to URL\r\n`);
+      this.terminal.write(`    claypuppeteer click     - Click element\r\n`);
+      this.terminal.write(`    claypuppeteer eval      - Evaluate JavaScript\r\n`);
+      this.terminal.write(`    claypuppeteer analyze   - Performance analysis\r\n`);
+      this.terminal.write(`    claypuppeteer seo       - SEO extraction\r\n`);
+      this.terminal.write(`    claypuppeteer report    - Full page report\r\n`);
       this.terminal.write(`\r\n`);
       
       this.terminal.write(`\x1b[36mFor more information, visit: https://github.com/your-repo/clay\x1b[0m\r\n\r\n`);
@@ -3504,38 +3746,44 @@ echo $! > /tmp/clay-bridge.pid
     }
 
     // Integration Commands
-    if (command.startsWith('crosup ')) {
-      await this.handleCrosupCommand(command);
+    if (command.startsWith('clayup ')) {
+      await this.handleClayupCommand(command);
       this.writePrompt();
       return;
     }
 
-    if (command.startsWith('chrostini ')) {
-      await this.handleChrostiniCommand(command);
+    if (command.startsWith('claylinux ')) {
+      await this.handleClayLinuxCommand(command);
       this.writePrompt();
       return;
     }
 
-    if (command.startsWith('vbox ') || command.startsWith('virtualbox ')) {
-      await this.handleVirtualBoxCommand(command);
+    if (command.startsWith('clayvm ') || command.startsWith('clay-box ')) {
+      await this.handleClayVMCommand(command);
       this.writePrompt();
       return;
     }
 
-    if (command.startsWith('recomod ') || command === 'recomod') {
-      await this.handleRecoModCommand(command);
+    if (command.startsWith('clayrecovery ') || command === 'clayrecovery') {
+      await this.handleClayRecoveryCommand(command);
       this.writePrompt();
       return;
     }
 
-    if (command.startsWith('v86 ') || command === 'v86') {
-      await this.handleV86Command(command);
+    if (command.startsWith('clayemu ') || command === 'clayemu') {
+      await this.handleClayEmuCommand(command);
       this.writePrompt();
       return;
     }
 
-    if (command.startsWith('browserpod ') || command === 'browserpod') {
-      await this.handleBrowserPodCommand(command);
+    if (command.startsWith('claypod ') || command === 'claypod') {
+      await this.handleClayPodCommand(command);
+      this.writePrompt();
+      return;
+    }
+
+    if (command.startsWith('claypuppeteer ') || command === 'claypuppeteer' || command.startsWith('puppeteer ')) {
+      await this.handleClayPuppeteerCommand(command);
       this.writePrompt();
       return;
     }

@@ -4,8 +4,8 @@
  */
 
 import { notificationManager } from './notification';
-import { browserPodIntegration } from '../integrations/browserpod';
-import type { PuppeteerBrowser, PuppeteerPage } from '../integrations/browserpod';
+import { clayPuppeteerIntegration } from '../integrations/claypuppeteer';
+import type { PuppeteerBrowser, PuppeteerPage } from '../integrations/claypuppeteer';
 
 export class BrowserAutomation {
   private container: HTMLElement | null = null;
@@ -153,7 +153,7 @@ export class BrowserAutomation {
   private async launchBrowser(): Promise<void> {
     try {
       notificationManager.info('Launching browser...');
-      const result = await browserPodIntegration.launchBrowser(true);
+      const result = await clayPuppeteerIntegration.launchBrowser(true);
       
       if (result.success) {
         notificationManager.success(`Browser launched: ${result.browserId}`);
@@ -182,7 +182,7 @@ export class BrowserAutomation {
     if (!browsersList) return;
 
     try {
-      const result = await browserPodIntegration.listBrowsers();
+      const result = await clayPuppeteerIntegration.listBrowsers();
       
       if (result.success) {
         this.browsers = result.browsers;
@@ -257,7 +257,7 @@ export class BrowserAutomation {
     if (!pagesList) return;
 
     try {
-      const result = await browserPodIntegration.listPages();
+      const result = await clayPuppeteerIntegration.listPages();
       
       if (result.success) {
         this.pages = result.pages;
@@ -328,7 +328,7 @@ export class BrowserAutomation {
   private async createPage(browserId: string): Promise<void> {
     try {
       notificationManager.info('Creating page...');
-      const result = await browserPodIntegration.createPage(browserId);
+      const result = await clayPuppeteerIntegration.createPage(browserId);
       
       if (result.success) {
         notificationManager.success(`Page created: ${result.pageId}`);
@@ -351,7 +351,7 @@ export class BrowserAutomation {
 
     try {
       notificationManager.info('Closing browser...');
-      const result = await browserPodIntegration.closeBrowser(browserId);
+      const result = await clayPuppeteerIntegration.closeBrowser(browserId);
       
       if (result.success) {
         notificationManager.success('Browser closed');
@@ -370,7 +370,7 @@ export class BrowserAutomation {
   private async closePage(pageId: string): Promise<void> {
     try {
       notificationManager.info('Closing page...');
-      const result = await browserPodIntegration.closePage(pageId);
+      const result = await clayPuppeteerIntegration.closePage(pageId);
       
       if (result.success) {
         notificationManager.success('Page closed');
@@ -389,7 +389,7 @@ export class BrowserAutomation {
   private async takeScreenshot(pageId: string): Promise<void> {
     try {
       notificationManager.info('Taking screenshot...');
-      const result = await browserPodIntegration.screenshot(pageId);
+      const result = await clayPuppeteerIntegration.screenshot(pageId);
       
       if (result.success && result.screenshot) {
         // Create download link
