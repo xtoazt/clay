@@ -102,6 +102,7 @@ class ClayWebTerminal {
   private tabCounter: number = 0;
   private filesystemContext: any = null; // Store scanned filesystem data
   private isScanning: boolean = false;
+  private _statusRetryCount: number = 0;
 
   constructor() {
     // Redesigned terminal with modern dark theme
@@ -160,6 +161,15 @@ class ClayWebTerminal {
     // Initialize asynchronously (don't block startup)
     getGlobalAIService().then(aiService => {
       this.aiAssistant = aiService;
+      // Update AI status once initialized
+      setTimeout(() => {
+        try {
+          const aiReady = isAIReady();
+          this.updateAIStatus(aiReady ? 'ready' : 'idle');
+        } catch (e) {
+          this.updateAIStatus('idle');
+        }
+      }, 1000);
     }).catch(() => {
       // If global service fails, try local instance
       this.aiAssistant = getWebLLMService();
@@ -167,6 +177,16 @@ class ClayWebTerminal {
         this.aiAssistant.initialize().catch(error => {
           console.error('Failed to initialize WebLLM:', error);
           // AI will still be accessible via global service
+        }).then(() => {
+          // Update AI status after initialization attempt
+          setTimeout(() => {
+            try {
+              const aiReady = isAIReady();
+              this.updateAIStatus(aiReady ? 'ready' : 'idle');
+            } catch (e) {
+              this.updateAIStatus('idle');
+            }
+          }, 1000);
         });
       }
     });
@@ -198,9 +218,9 @@ class ClayWebTerminal {
           }
         } else {
           // Retry status bar initialization later
-          setTimeout(() => {
+    setTimeout(() => {
             if (document.getElementById('status-bar')) {
-              this.initializeStatusBar();
+      this.initializeStatusBar();
             }
           }, 200);
         }
@@ -230,7 +250,7 @@ class ClayWebTerminal {
         
         // Setup other features (with error handling)
         try {
-          this.checkForShareLink();
+      this.checkForShareLink();
           this.setupKeyboardShortcuts();
           this.setupCommandPalette();
           this.initializeTabSystem();
@@ -238,20 +258,20 @@ class ClayWebTerminal {
         } catch (e) {
           console.error('Error setting up features:', e);
         }
-        
-        // Initialize Lucide icons
+      
+      // Initialize Lucide icons
         try {
-          if (typeof (window as any).lucide !== 'undefined') {
-            (window as any).lucide.createIcons();
+      if (typeof (window as any).lucide !== 'undefined') {
+        (window as any).lucide.createIcons();
           }
         } catch (e) {
           console.error('Error initializing Lucide icons:', e);
-        }
-        
+      }
+      
         // Hide loading overlay
-        setTimeout(() => {
+      setTimeout(() => {
           try {
-            this.hideLoading();
+        this.hideLoading();
           } catch (e) {
             console.error('Error hiding loading:', e);
           }
@@ -369,20 +389,21 @@ class ClayWebTerminal {
       const websocketDot = document.getElementById('websocket-dot');
       const aiDot = document.getElementById('ai-dot');
       
-      // Initialize status with safe checks
+      // Initialize status with safe checks - always set initial state
       try {
-        if (webvmDot) this.updateWebVMStatus('connecting');
-        if (bridgeDot) this.updateBridgeStatus('disconnected');
-        if (websocketDot) this.updateWebSocketStatus('disconnected');
-        if (aiDot) this.updateAIStatus('idle');
+        // Always initialize status, even if backend isn't ready
+    this.updateWebVMStatus('connecting');
+    this.updateBridgeStatus('disconnected');
+        this.updateWebSocketStatus('disconnected');
+    this.updateAIStatus('idle');
       } catch (e) {
         console.error('Error initializing status indicators:', e);
       }
       
       // Update info displays
       try {
-        this.updateOSInfo();
-        this.updateCPUUsage();
+    this.updateOSInfo();
+    this.updateCPUUsage();
       } catch (e) {
         console.error('Error updating OS/CPU info:', e);
       }
@@ -391,7 +412,7 @@ class ClayWebTerminal {
       const searchDot = document.getElementById('search-dot');
       if (searchDot) {
         try {
-          this.updateSearchStatus('idle');
+    this.updateSearchStatus('idle');
         } catch (e) {
           console.error('Error updating search status:', e);
         }
@@ -407,8 +428,8 @@ class ClayWebTerminal {
             const now = Date.now();
             // Throttle updates to prevent excessive DOM manipulation
             if (now - lastUpdate >= updateInterval) {
-              this.checkBackendComponents();
-              this.updateCPUUsage();
+      this.checkBackendComponents();
+      this.updateCPUUsage();
               if (searchDot) {
                 this.updateSearchStatus(this.searchStatus);
               }
@@ -1058,41 +1079,41 @@ echo $! > /tmp/clay-bridge.pid
   
   private checkBackendComponents(): void {
     try {
-      if (this.backend) {
-        if (this.backend instanceof BridgeBackend) {
-          // Bridge backend
-          const ws = (this.backend as any).ws;
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            this.updateWebSocketStatus('connected');
-            this.updateBridgeStatus('connected');
-            this.updateWebVMStatus('disconnected'); // Not using WebVM when bridge is active
-          } else if (ws && ws.readyState === WebSocket.CONNECTING) {
-            this.updateWebSocketStatus('connecting');
-            this.updateBridgeStatus('connecting');
-          } else {
-            this.updateWebSocketStatus('disconnected');
-            this.updateBridgeStatus('disconnected');
-          }
-        } else if (this.backend instanceof WebWorkerBackendWrapper) {
-          // Web Worker backend (WebVM)
-          if (this.backend.getConnected()) {
-            this.updateWebVMStatus('connected');
-            this.updateWebSocketStatus('disconnected');
-            this.updateBridgeStatus('disconnected');
-          } else {
-            this.updateWebVMStatus('disconnected');
-          }
+    if (this.backend) {
+      if (this.backend instanceof BridgeBackend) {
+        // Bridge backend
+        const ws = (this.backend as any).ws;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          this.updateWebSocketStatus('connected');
+          this.updateBridgeStatus('connected');
+          this.updateWebVMStatus('disconnected'); // Not using WebVM when bridge is active
+        } else if (ws && ws.readyState === WebSocket.CONNECTING) {
+          this.updateWebSocketStatus('connecting');
+          this.updateBridgeStatus('connecting');
+        } else {
+          this.updateWebSocketStatus('disconnected');
+          this.updateBridgeStatus('disconnected');
         }
-      } else {
-        this.updateWebVMStatus('disconnected');
-        this.updateWebSocketStatus('disconnected');
-        this.updateBridgeStatus('disconnected');
+      } else if (this.backend instanceof WebWorkerBackendWrapper) {
+        // Web Worker backend (WebVM)
+        if (this.backend.getConnected()) {
+          this.updateWebVMStatus('connected');
+          this.updateWebSocketStatus('disconnected');
+          this.updateBridgeStatus('disconnected');
+        } else {
+          this.updateWebVMStatus('disconnected');
+        }
       }
-      
+    } else {
+      this.updateWebVMStatus('disconnected');
+      this.updateWebSocketStatus('disconnected');
+      this.updateBridgeStatus('disconnected');
+    }
+    
       // Refresh Lucide icons (safely)
       try {
-        if (typeof (window as any).lucide !== 'undefined') {
-          (window as any).lucide.createIcons();
+    if (typeof (window as any).lucide !== 'undefined') {
+      (window as any).lucide.createIcons();
         }
       } catch (e) {
         // Ignore Lucide errors
@@ -1111,32 +1132,38 @@ echo $! > /tmp/clay-bridge.pid
     const dot = document.getElementById('webvm-dot');
     const text = document.getElementById('webvm-text');
     
-    if (dot) {
-      // Remove all status classes
-      dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'connected', 'disconnected', 'connecting', 'error', 'status-dot');
-      // Add base classes and status class
-      dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
-      // Add the correct color class
+    if (!dot || !text) {
+      // Elements don't exist yet, retry later (but limit retries)
+      if (!this._statusRetryCount) this._statusRetryCount = 0;
+      if (this._statusRetryCount < 10) {
+        this._statusRetryCount++;
+        setTimeout(() => this.updateWebVMStatus(status), 100);
+      }
+      return;
+    }
+    this._statusRetryCount = 0; // Reset on success
+    
+    // Remove all status classes
+    dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'connected', 'disconnected', 'connecting', 'error', 'status-dot', 'animate-pulse');
+    // Add base classes and status class
+    dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
+    // Add the correct color class
       const colorMap: Record<string, string> = {
         'connected': 'bg-green-500',
         'disconnected': 'bg-gray-500',
         'connecting': 'bg-yellow-500',
         'error': 'bg-red-500'
       };
-      const colorClass = colorMap[status] || 'bg-gray-500';
-      dot.classList.add(colorClass, status);
-      
-      // Add animation for connecting state
-      if (status === 'connecting') {
-        dot.classList.add('animate-pulse');
-      } else {
-        dot.classList.remove('animate-pulse');
-      }
+    const colorClass = colorMap[status] || 'bg-gray-500';
+    dot.classList.add(colorClass, status);
+    
+    // Add animation for connecting state
+    if (status === 'connecting') {
+      dot.classList.add('animate-pulse');
     }
-    if (text) {
-      text.textContent = 'WebVM';
-      text.setAttribute('title', `WebVM: ${status}`);
-    }
+    
+    text.textContent = 'WebVM';
+    text.setAttribute('title', `WebVM: ${status}`);
   }
   
   private updateWebSocketStatus(status: 'connected' | 'disconnected' | 'connecting' | 'error'): void {
@@ -1144,32 +1171,38 @@ echo $! > /tmp/clay-bridge.pid
     const dot = document.getElementById('websocket-dot');
     const text = document.getElementById('websocket-text');
     
-    if (dot) {
-      // Remove all status classes
-      dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'connected', 'disconnected', 'connecting', 'error', 'status-dot');
-      // Add base classes and status class
-      dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
-      // Add the correct color class
+    if (!dot || !text) {
+      // Elements don't exist yet, retry later (but limit retries)
+      if (!this._statusRetryCount) this._statusRetryCount = 0;
+      if (this._statusRetryCount < 10) {
+        this._statusRetryCount++;
+        setTimeout(() => this.updateWebSocketStatus(status), 100);
+      }
+      return;
+    }
+    this._statusRetryCount = 0; // Reset on success
+    
+    // Remove all status classes
+    dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'connected', 'disconnected', 'connecting', 'error', 'status-dot', 'animate-pulse');
+    // Add base classes and status class
+    dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
+    // Add the correct color class
       const colorMap: Record<string, string> = {
         'connected': 'bg-green-500',
         'disconnected': 'bg-gray-500',
         'connecting': 'bg-yellow-500',
         'error': 'bg-red-500'
       };
-      const colorClass = colorMap[status] || 'bg-gray-500';
-      dot.classList.add(colorClass, status);
-      
-      // Add animation for connecting state
-      if (status === 'connecting') {
-        dot.classList.add('animate-pulse');
-      } else {
-        dot.classList.remove('animate-pulse');
-      }
+    const colorClass = colorMap[status] || 'bg-gray-500';
+    dot.classList.add(colorClass, status);
+    
+    // Add animation for connecting state
+    if (status === 'connecting') {
+      dot.classList.add('animate-pulse');
     }
-    if (text) {
-      text.textContent = 'WS';
-      text.setAttribute('title', `WebSocket: ${status}`);
-    }
+    
+    text.textContent = 'WS';
+    text.setAttribute('title', `WebSocket: ${status}`);
   }
   
   private updateBridgeStatus(status: 'connected' | 'disconnected' | 'connecting' | 'error'): void {
@@ -1177,62 +1210,76 @@ echo $! > /tmp/clay-bridge.pid
     const dot = document.getElementById('bridge-dot');
     const text = document.getElementById('bridge-text');
     
-    if (dot) {
-      // Remove all status classes
-      dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'connected', 'disconnected', 'connecting', 'error', 'status-dot');
-      // Add base classes and status class
-      dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
-      // Add the correct color class
+    if (!dot || !text) {
+      // Elements don't exist yet, retry later (but limit retries)
+      if (!this._statusRetryCount) this._statusRetryCount = 0;
+      if (this._statusRetryCount < 10) {
+        this._statusRetryCount++;
+        setTimeout(() => this.updateBridgeStatus(status), 100);
+      }
+      return;
+    }
+    this._statusRetryCount = 0; // Reset on success
+    
+    // Remove all status classes
+    dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'connected', 'disconnected', 'connecting', 'error', 'status-dot', 'animate-pulse');
+    // Add base classes and status class
+    dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
+    // Add the correct color class
       const colorMap: Record<string, string> = {
         'connected': 'bg-green-500',
         'disconnected': 'bg-gray-500',
         'connecting': 'bg-yellow-500',
         'error': 'bg-red-500'
       };
-      const colorClass = colorMap[status] || 'bg-gray-500';
-      dot.classList.add(colorClass, status);
-      
-      // Add animation for connecting state
-      if (status === 'connecting') {
-        dot.classList.add('animate-pulse');
-      } else {
-        dot.classList.remove('animate-pulse');
-      }
+    const colorClass = colorMap[status] || 'bg-gray-500';
+    dot.classList.add(colorClass, status);
+    
+    // Add animation for connecting state
+    if (status === 'connecting') {
+      dot.classList.add('animate-pulse');
     }
-    if (text) {
-      text.textContent = 'Bridge';
-      text.setAttribute('title', `Bridge: ${status}`);
-    }
+    
+    text.textContent = 'Bridge';
+    text.setAttribute('title', `Bridge: ${status}`);
   }
 
   private updateAIStatus(status: 'ready' | 'idle' | 'thinking' | 'error'): void {
     const dot = document.getElementById('ai-dot');
     const text = document.getElementById('ai-text');
     
-    if (dot) {
-      // Remove all status classes
-      dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'ready', 'idle', 'thinking', 'error', 'status-dot', 'animate-pulse');
-      // Add base classes and status class
-      dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
-      // Add the correct color class
+    if (!dot || !text) {
+      // Elements don't exist yet, retry later (but limit retries)
+      if (!this._statusRetryCount) this._statusRetryCount = 0;
+      if (this._statusRetryCount < 10) {
+        this._statusRetryCount++;
+        setTimeout(() => this.updateAIStatus(status), 100);
+      }
+      return;
+    }
+    this._statusRetryCount = 0; // Reset on success
+    
+    // Remove all status classes
+    dot.classList.remove('bg-green-500', 'bg-gray-500', 'bg-yellow-500', 'bg-red-500', 'ready', 'idle', 'thinking', 'error', 'status-dot', 'animate-pulse');
+    // Add base classes and status class
+    dot.classList.add('status-dot', 'w-2', 'h-2', 'rounded-full');
+    // Add the correct color class
       const statusMap: Record<string, string> = {
         'idle': 'bg-gray-500',
         'thinking': 'bg-yellow-500',
         'ready': 'bg-green-500',
         'error': 'bg-red-500'
       };
-      const colorClass = statusMap[status] || 'bg-gray-500';
-      dot.classList.add(colorClass, status);
-      
-      // Add animation for thinking state
-      if (status === 'thinking') {
-        dot.classList.add('animate-pulse');
-      }
+    const colorClass = statusMap[status] || 'bg-gray-500';
+    dot.classList.add(colorClass, status);
+    
+    // Add animation for thinking state
+    if (status === 'thinking') {
+      dot.classList.add('animate-pulse');
     }
-    if (text) {
-      text.textContent = 'AI';
-      text.setAttribute('title', `AI: ${status}`);
-    }
+    
+    text.textContent = 'AI';
+    text.setAttribute('title', `AI: ${status}`);
   }
 
   private initializeTerminal(): void {
@@ -1259,7 +1306,7 @@ echo $! > /tmp/clay-bridge.pid
     }
 
     try {
-      this.terminal.open(terminalElement);
+    this.terminal.open(terminalElement);
       this.setupTerminalAfterOpen();
     } catch (error) {
       console.error('Failed to open terminal:', error);
@@ -2090,6 +2137,11 @@ echo $! > /tmp/clay-bridge.pid
     // For non-ChromeOS, prefer WebVM for faster startup
     // For ChromeOS, prefer external bridge but fallback to WebVM
     try {
+      // Set initial connecting status
+      this.updateWebVMStatus('connecting');
+      this.updateBridgeStatus('connecting');
+      this.updateWebSocketStatus('connecting');
+      
       const enhancedBridge = getEnhancedBridge({
         preferredType: this.isChromeOS ? 'external' : 'webvm',
         enableAutoFallback: true,
@@ -2109,7 +2161,7 @@ echo $! > /tmp/clay-bridge.pid
       const bridgeType = enhancedBridge.getBridgeType();
       this.useBridge = bridgeType === 'external';
       
-      // Update status
+      // Update status based on bridge type
       if (bridgeType === 'external') {
         this.updateBridgeStatus('connecting');
         this.updateWebSocketStatus('connecting');
@@ -2128,7 +2180,19 @@ echo $! > /tmp/clay-bridge.pid
           component: 'ClayWebTerminal',
           operation: 'setupBackend'
         });
-        // Continue anyway - backend might still work
+        // If setupBackend fails, the bridge might already be connected from enhanced bridge
+        // Check if it's actually connected
+        if (this.backend instanceof BridgeBackend) {
+          const ws = (this.backend as any).ws;
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            this.isConnected = true;
+            this.updateBridgeStatus('connected');
+            this.updateWebSocketStatus('connected');
+          }
+        } else if (this.backend instanceof WebWorkerBackendWrapper && this.backend.getConnected()) {
+          this.isConnected = true;
+          this.updateWebVMStatus('connected');
+        }
       }
 
       // Update status based on connection
@@ -2152,7 +2216,25 @@ echo $! > /tmp/clay-bridge.pid
           }
         } else {
           this.updateWebVMStatus('connected');
+          this.updateBridgeStatus('disconnected');
+          this.updateWebSocketStatus('disconnected');
         }
+      } else {
+        // Not connected - set appropriate status
+        if (bridgeType === 'external') {
+          this.updateBridgeStatus('disconnected');
+          this.updateWebSocketStatus('disconnected');
+        } else {
+          this.updateWebVMStatus('disconnected');
+        }
+      }
+      
+      // Always update AI status - AI should be available
+      try {
+        const aiReady = isAIReady();
+        this.updateAIStatus(aiReady ? 'ready' : 'idle');
+      } catch (e) {
+        this.updateAIStatus('idle');
       }
 
       // Show connection message
@@ -2188,9 +2270,12 @@ echo $! > /tmp/clay-bridge.pid
       this.backend = new WebWorkerBackendWrapper();
       this.useBridge = false;
       this.updateWebVMStatus('connecting');
+      this.updateBridgeStatus('disconnected');
+      this.updateWebSocketStatus('disconnected');
       
       try {
         await this.backend.connect();
+        this.isConnected = true;
         this.updateWebVMStatus('connected');
         this.terminal.write('\r\n\x1b[36m[INFO]\x1b[0m Running in WebVM mode\r\n');
         this.terminal.write('\x1b[32m[INFO]\x1b[0m AI Assistant (@ai) is always available!\r\n');
@@ -2200,12 +2285,29 @@ echo $! > /tmp/clay-bridge.pid
           this.terminal.write('\x1b[33m[INFO]\x1b[0m WebVM provides basic terminal functionality.\r\n');
           this.terminal.write('\x1b[33m[INFO]\x1b[0m For full system access, start the bridge server.\r\n');
         }
+        
+        // Update AI status
+        try {
+          const aiReady = isAIReady();
+          this.updateAIStatus(aiReady ? 'ready' : 'idle');
+        } catch (e) {
+          this.updateAIStatus('idle');
+        }
       } catch (webvmError) {
         // Even WebVM failed - this is very rare, but terminal should still work
+        this.isConnected = false;
         this.updateWebVMStatus('error');
         this.terminal.write(`\r\n\x1b[31m[ERROR]\x1b[0m Failed to initialize terminal backend\r\n`);
         this.terminal.write('\x1b[33m[INFO]\x1b[0m AI Assistant (@ai) is still available!\r\n');
         this.terminal.write('\x1b[33m[INFO]\x1b[0m Some terminal features may be limited.\r\n');
+        
+        // Update AI status - AI should still work
+        try {
+          const aiReady = isAIReady();
+          this.updateAIStatus(aiReady ? 'ready' : 'idle');
+        } catch (e) {
+          this.updateAIStatus('idle');
+        }
       }
     }
   }
@@ -2215,25 +2317,36 @@ echo $! > /tmp/clay-bridge.pid
       await this.initializeBackend();
     }
     
+    // Check if already connected (from enhanced bridge)
+    if (this.backend instanceof BridgeBackend) {
+      const ws = (this.backend as any).ws;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        this.isConnected = true;
+        // Still need to set up handlers
+      }
+    } else if (this.backend instanceof WebWorkerBackendWrapper && this.backend.getConnected()) {
+      this.isConnected = true;
+    }
+    
     try {
       // Only show connection messages if not already connected
       if (!this.isConnected) {
-        if (this.useBridge) {
+      if (this.useBridge) {
           // Bridge-specific messages
-          this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Connecting to Clay Terminal Bridge...\r\n');
-          this.terminal.write('\x1b[32m[INFO]\x1b[0m Real system command execution enabled!\r\n');
+        this.terminal.write('\r\n\x1b[33m[INFO]\x1b[0m Connecting to Clay Terminal Bridge...\r\n');
+        this.terminal.write('\x1b[32m[INFO]\x1b[0m Real system command execution enabled!\r\n');
           
           // ChromeOS-specific messages
           if (this.isChromeOS) {
-            this.terminal.write('\x1b[32m[INFO]\x1b[0m Full terminal access - alternative to Crostini/Crosh\r\n');
-            this.terminal.write('\x1b[32m[INFO]\x1b[0m All commands execute on your ChromeOS system.\r\n');
-            
-            // Show Linux Files status
-            const linuxFilesPath = await this.checkLinuxFilesAccess();
-            if (linuxFilesPath) {
-              this.terminal.write(`\x1b[36m[Files]\x1b[0m Linux Files folder: ${linuxFilesPath}\r\n`);
-            }
-          } else {
+        this.terminal.write('\x1b[32m[INFO]\x1b[0m Full terminal access - alternative to Crostini/Crosh\r\n');
+        this.terminal.write('\x1b[32m[INFO]\x1b[0m All commands execute on your ChromeOS system.\r\n');
+        
+        // Show Linux Files status
+        const linuxFilesPath = await this.checkLinuxFilesAccess();
+        if (linuxFilesPath) {
+          this.terminal.write(`\x1b[36m[Files]\x1b[0m Linux Files folder: ${linuxFilesPath}\r\n`);
+        }
+      } else {
             this.terminal.write('\x1b[32m[INFO]\x1b[0m All commands execute on your system.\r\n');
           }
         }
@@ -2259,15 +2372,17 @@ echo $! > /tmp/clay-bridge.pid
         this.writePrompt();
       });
       
-      // Connect to backend
-      try {
-        await this.backend!.connect();
-        this.isConnected = true;
-      } catch (connectError: any) {
-        this.isConnected = false;
-        this.updateBridgeStatus('error');
-        this.updateWebSocketStatus('error');
-        throw connectError;
+      // Connect to backend (only if not already connected)
+      if (!this.isConnected) {
+        try {
+          await this.backend!.connect();
+          this.isConnected = true;
+        } catch (connectError: any) {
+          this.isConnected = false;
+          this.updateBridgeStatus('error');
+          this.updateWebSocketStatus('error');
+          throw connectError;
+        }
       }
       
       if (this.useBridge) {
@@ -3505,11 +3620,11 @@ Note: This is a summary of the user's filesystem. Use this information to answer
 
   private printWelcomeMessage(): void {
     try {
-      this.terminal.write('\r\n');
-      this.terminal.write(`\x1b[1m\x1b[36m╔═══════════════════════════════════════════════════════╗\x1b[0m\r\n`);
+    this.terminal.write('\r\n');
+    this.terminal.write(`\x1b[1m\x1b[36m╔═══════════════════════════════════════════════════════╗\x1b[0m\r\n`);
       this.terminal.write(`\x1b[1m\x1b[36m║\x1b[0m  \x1b[1m\x1b[34mClay Terminal\x1b[0m - Take Control of your Chromebook        \x1b[1m\x1b[36m║\x1b[0m\r\n`);
-      this.terminal.write(`\x1b[1m\x1b[36m╚═══════════════════════════════════════════════════════╝\x1b[0m\r\n`);
-      this.terminal.write('\r\n');
+    this.terminal.write(`\x1b[1m\x1b[36m╚═══════════════════════════════════════════════════════╝\x1b[0m\r\n`);
+    this.terminal.write('\r\n');
       this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mAI Assistant (JOSIEFIED)\x1b[0m - Type \x1b[33m@ai <question>\x1b[0m\r\n`);
       this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mLocal AI Inference\x1b[0m - Runs entirely in browser using WebLLM\r\n`);
       
@@ -3522,13 +3637,13 @@ Note: This is a summary of the user's filesystem. Use this information to answer
         this.terminal.write(`  \x1b[33mℹ\x1b[0m \x1b[36mSystem Access\x1b[0m - Start bridge server for full system commands\r\n`);
       }
       
-      this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mWeb Search\x1b[0m - Type \x1b[33msearch <query>\x1b[0m or \x1b[33m@search <query>\x1b[0m\r\n`);
-      this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mTab Completion\x1b[0m - Press Tab for command/file completion\r\n`);
-      this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mHistory Search\x1b[0m - Press \x1b[33mCtrl+R\x1b[0m to search command history\r\n`);
-      this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mFile Operations\x1b[0m - touch, mkdir, rm, mv, cp supported\r\n`);
-      this.terminal.write(`  \x1b[32m✓\x1b[0m Type \x1b[33mhelp\x1b[0m for all available commands\r\n`);
-      this.terminal.write(`  \x1b[32m✓\x1b[0m Commands adapt to your device capabilities\r\n`);
-      this.terminal.write('\r\n');
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mWeb Search\x1b[0m - Type \x1b[33msearch <query>\x1b[0m or \x1b[33m@search <query>\x1b[0m\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mTab Completion\x1b[0m - Press Tab for command/file completion\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mHistory Search\x1b[0m - Press \x1b[33mCtrl+R\x1b[0m to search command history\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m \x1b[36mFile Operations\x1b[0m - touch, mkdir, rm, mv, cp supported\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m Type \x1b[33mhelp\x1b[0m for all available commands\r\n`);
+    this.terminal.write(`  \x1b[32m✓\x1b[0m Commands adapt to your device capabilities\r\n`);
+    this.terminal.write('\r\n');
     } catch (error) {
       console.warn('Failed to print welcome message:', error);
     }
@@ -4356,35 +4471,35 @@ function renderTerminalView(): void {
         <div class="flex items-center gap-3 flex-wrap">
           <!-- Status Indicators Only -->
           <div id="webvm-status" class="flex items-center gap-2 px-3 py-1.5 rounded-lg glass hover:bg-white/5 transition-all">
-            <div id="webvm-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-            <span id="webvm-text" class="text-xs text-gray-300 font-medium">WebVM</span>
-          </div>
+              <div id="webvm-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="webvm-text" class="text-xs text-gray-300 font-medium">WebVM</span>
+            </div>
           <div id="bridge-status" class="flex items-center gap-2 px-3 py-1.5 rounded-lg glass hover:bg-white/5 transition-all">
-            <div id="bridge-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-            <span id="bridge-text" class="text-xs text-gray-300 font-medium">Bridge</span>
-          </div>
+              <div id="bridge-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="bridge-text" class="text-xs text-gray-300 font-medium">Bridge</span>
+            </div>
           <div id="websocket-status" class="flex items-center gap-2 px-3 py-1.5 rounded-lg glass hover:bg-white/5 transition-all">
-            <div id="websocket-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-            <span id="websocket-text" class="text-xs text-gray-300 font-medium">WS</span>
-          </div>
+              <div id="websocket-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="websocket-text" class="text-xs text-gray-300 font-medium">WS</span>
+            </div>
           <div id="ai-status" class="flex items-center gap-2 px-3 py-1.5 rounded-lg glass hover:bg-white/5 transition-all">
-            <div id="ai-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
-            <span id="ai-text" class="text-xs text-gray-300 font-medium">AI</span>
-          </div>
+              <div id="ai-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="ai-text" class="text-xs text-gray-300 font-medium">AI</span>
+            </div>
           <div id="os-info" class="px-3 py-1.5 rounded-lg glass">
-            <span id="os-text" class="text-xs text-gray-300 font-medium">OS: Unknown</span>
-          </div>
+              <span id="os-text" class="text-xs text-gray-300 font-medium">OS: Unknown</span>
+            </div>
           <div id="cpu-usage" class="px-3 py-1.5 rounded-lg glass">
-            <span id="cpu-text" class="text-xs text-gray-300 font-medium">CPU: --</span>
+              <span id="cpu-text" class="text-xs text-gray-300 font-medium">CPU: --</span>
+            </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-    
+        
       <!-- Terminal Container -->
       <div class="flex-1 overflow-hidden p-6 relative">
         <div id="terminal" class="w-full h-full glass rounded-2xl shadow-xl relative z-10"></div>
-      </div>
+        </div>
     </div>
   `;
   root.appendChild(layout);
@@ -4399,16 +4514,16 @@ function renderTerminalView(): void {
       setTimeout(() => {
         const sunIcon = document.getElementById('sun-icon-sidebar');
         const moonIcon = document.getElementById('moon-icon-sidebar');
-        if (sunIcon && moonIcon) {
+    if (sunIcon && moonIcon) {
           const isDark = document.documentElement.classList.contains('dark');
-          if (isDark) {
-            sunIcon.classList.add('hidden');
-            moonIcon.classList.remove('hidden');
-          } else {
-            sunIcon.classList.remove('hidden');
-            moonIcon.classList.add('hidden');
-          }
-        }
+      if (isDark) {
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+    }
       }, 10);
     });
   }
@@ -4439,10 +4554,10 @@ function renderTerminalView(): void {
 
   const back = document.getElementById('back-home') as HTMLButtonElement;
   if (back) {
-    back.addEventListener('click', () => {
-      location.hash = '';
-      renderLanding();
-    });
+  back.addEventListener('click', () => {
+    location.hash = '';
+    renderLanding();
+  });
   }
 
   const sidebarTerminal = document.getElementById('sidebar-terminal');
@@ -4550,7 +4665,7 @@ function renderTerminalView(): void {
         if (!(window as any).clayTerminal) {
           new ClayWebTerminal();
         }
-      } catch (e) {
+    } catch (e) {
         console.error('Failed to initialize terminal:', e);
         // Retry once after a delay
         setTimeout(() => {

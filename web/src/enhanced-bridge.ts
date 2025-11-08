@@ -130,9 +130,14 @@ export class EnhancedBridge {
       );
       
       if (isHealthy) {
-        // Bridge is healthy, return it
-        // The bridge will be connected later via setupBackend()
-        return bridge;
+        // Bridge is healthy, now actually connect the WebSocket
+        try {
+          await bridge.connect();
+          return bridge;
+        } catch (connectError) {
+          console.log('[EnhancedBridge] Bridge health check passed but connection failed:', connectError instanceof Error ? connectError.message : String(connectError));
+          return null;
+        }
       }
     } catch (error) {
       // External bridge not available - this is expected on most devices
