@@ -60,7 +60,8 @@ export class WebLLMService {
     this.isInitializing = true;
 
     try {
-      console.log('[WebLLM] Initializing JOSIEFIED model...');
+      console.log('[WebLLM] Initializing JOSIEFIED Qwen3-0.6B model...');
+      console.log('[WebLLM] Model: Goekdeniz-Guelmez/Josiefied-Qwen3-0.6B-abliterated-v1');
       
       // Build model identifier with quantization
       // WebLLM uses specific model IDs - we'll use a compatible Qwen model
@@ -69,26 +70,34 @@ export class WebLLMService {
       const quant = this.config.quantization || 'q4f16_1';
       
       // Map our quantization to WebLLM model IDs
-      // WebLLM uses specific model identifiers - try common available models
-      // Common WebLLM models: TinyLlama, Phi-3-mini, Qwen2.5-0.5B, etc.
-      // Use TinyLlama as a reliable fallback since it's commonly available
+      // Using JOSIEFIED Qwen3-0.6B model from Hugging Face
+      // Model: Goekdeniz-Guelmez/Josiefied-Qwen3-0.6B-abliterated-v1
+      // This is an uncensored, high-performance model based on Qwen3-0.6B
+      // WebLLM format: HuggingFace org/model-name with quantization suffix
+      const baseModel = 'Goekdeniz-Guelmez/Josiefied-Qwen3-0.6B-abliterated-v1';
+      
       switch (quant) {
         case 'q4f16_1':
-          // Try Qwen first, fallback to TinyLlama
-          modelId = 'TinyLlama/TinyLlama-1.1B-Chat-v0.1-q4f16_1';
+          // Try JOSIEFIED model with q4f16_1 quantization
+          modelId = `${baseModel}-q4f16_1`;
           break;
         case 'q4f32_1':
-          modelId = 'TinyLlama/TinyLlama-1.1B-Chat-v0.1-q4f32_1';
+          modelId = `${baseModel}-q4f32_1`;
           break;
         case 'q8f16_1':
-          modelId = 'TinyLlama/TinyLlama-1.1B-Chat-v0.1-q8f16_1';
+          modelId = `${baseModel}-q8f16_1`;
           break;
         case 'f16':
-          modelId = 'TinyLlama/TinyLlama-1.1B-Chat-v0.1-f16';
+          modelId = `${baseModel}-f16`;
           break;
         default:
-          modelId = 'TinyLlama/TinyLlama-1.1B-Chat-v0.1-q4f16_1';
+          // Default to q4f16_1 for best balance of size and quality
+          modelId = `${baseModel}-q4f16_1`;
       }
+      
+      // If the specific quantization doesn't exist, try the base model
+      // WebLLM may auto-detect available quantizations
+      console.log(`[WebLLM] Attempting to load JOSIEFIED model: ${modelId}`);
       
       // Try to initialize with the model ID
       // If it fails, log a warning and continue without AI
@@ -99,15 +108,31 @@ export class WebLLMService {
           }
         });
       } catch (modelError: any) {
-        // If model not found, try with a simpler model ID or disable AI
+        // If model not found, try the base model name without quantization
         if (modelError.message?.includes('Cannot find model') || modelError.message?.includes('model record')) {
-          console.warn(`[WebLLM] Model ${modelId} not found in WebLLM registry.`);
-          console.warn(`[WebLLM] Available models must be listed in WebLLM's model_list.json`);
-          console.warn(`[WebLLM] AI features will be disabled. To enable AI, ensure WebLLM models are properly configured.`);
-          // Don't throw - allow app to continue without AI
-          this.isInitialized = false;
-          this.isInitializing = false;
-          return; // Exit gracefully without AI
+          console.warn(`[WebLLM] Model ${modelId} not found, trying base model...`);
+          
+          // Try base model name (WebLLM may auto-select quantization or use MLC format)
+          try {
+            const baseModelId = 'Goekdeniz-Guelmez/Josiefied-Qwen3-0.6B-abliterated-v1';
+            console.log(`[WebLLM] Attempting base model: ${baseModelId}`);
+            this.engine = await CreateMLCEngine(baseModelId, {
+              initProgressCallback: (report) => {
+                console.log('[WebLLM] Progress:', report);
+              }
+            });
+            console.log('[WebLLM] Base JOSIEFIED model loaded successfully');
+          } catch (fallbackError: any) {
+            console.warn(`[WebLLM] Base model also not found: ${fallbackError.message}`);
+            console.warn(`[WebLLM] Note: JOSIEFIED model may need to be converted to MLC format for WebLLM.`);
+            console.warn(`[WebLLM] GGUF models need to be converted to MLC format to work with WebLLM.`);
+            console.warn(`[WebLLM] Available models must be listed in WebLLM's model_list.json`);
+            console.warn(`[WebLLM] AI features will be disabled. To enable AI, ensure WebLLM models are properly configured.`);
+            // Don't throw - allow app to continue without AI
+            this.isInitialized = false;
+            this.isInitializing = false;
+            return; // Exit gracefully without AI
+          }
         } else {
           throw modelError;
         }
